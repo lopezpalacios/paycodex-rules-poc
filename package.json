@@ -45,20 +45,20 @@
     "@openzeppelin/contracts": "^5.0.2",
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
-    "@types/chai": "^4.3.20",
+    "@types/chai": "^5.2.3",
     "@types/mocha": "^10.0.10",
-    "@types/node": "^20.11.0",
+    "@types/node": "^25.6.0",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
     "assemblyscript": "^0.27.29",
     "chai": "^6.2.2",
     "hardhat": "^2.22.0",
     "hardhat-gas-reporter": "^2.2.0",
-    "solhint": "^5.0.3",
+    "solhint": "^6.2.1",
     "solidity-coverage": "^0.8.17",
     "ts-node": "^10.9.2",
     "typechain": "^8.3.2",
-    "typescript": "^5.4.0",
-    "vite": "^5.2.0"
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
   }
 }
