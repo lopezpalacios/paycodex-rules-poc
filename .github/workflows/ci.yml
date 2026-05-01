@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - name: Run Slither
         uses: crytic/slither-action@v0.4.0
         id: slither
@@ -175,7 +175,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run wasm:build && npm run compile
       - name: Start Besu
         run: |

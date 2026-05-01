@@ -4,6 +4,14 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Fixed (loop iter 36, 2026-05-02) — CI npm install was failing on peer dep mismatch
+- Root cause: `@nomicfoundation/hardhat-toolbox@5.0.0` declares a peer dep of `hardhat-gas-reporter@^1.0.8`, but we use `^2.2.0` (ESM-friendly upgrade). On dev machines, an older lockfile resolution allowed it; on a clean GitHub Actions runner with `npm ci`, npm 10's strict peer-dep resolver rejected the install.
+- Fix:
+  - Added repo-level `.npmrc` with `legacy-peer-deps=true` so dev + CI behave consistently
+  - Belt-and-braces: `npm ci --legacy-peer-deps` in all 3 workflows (`ci.yml`, `release.yml`, `mutation.yml`)
+- Net effect: CI runs cleanly again. The peer-dep mismatch is benign at runtime — gas-reporter v2 has the same hooks v1 had, just packaged for ESM.
+- Caught by: GitHub Actions `Slither static analysis` job on push of iter 34 (sha 09b510d) failed with `ERESOLVE` on `npm ci`. Iter 36 exists because iter 34 + 35 ran locally without surfacing the issue.
+
 ### Added (loop iter 35, 2026-05-02) — Release workflow + Dependabot
 - New `.github/workflows/release.yml`:
   - Triggers on `v*.*.*` tag push or `workflow_dispatch` with explicit tag input
