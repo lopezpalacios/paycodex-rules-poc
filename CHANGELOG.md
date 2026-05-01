@@ -4,6 +4,27 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed (loop iter 25, 2026-05-01) — NatSpec polish on public surfaces
+- Comprehensive `@notice` / `@dev` / `@param` / `@return` tags added to:
+  - `RuleRegistry` (struct fields, all functions, all events, all errors documented)
+  - `OperatorMultisig` (struct fields, constructor invariants, function semantics, error meanings)
+  - `InterestBearingDeposit` (state vars, events, constructor params, internal `_accrueToNow` invariant)
+  - `SimpleStrategy` (template — `@inheritdoc IInterestStrategy` for the interface methods)
+- `IMintable` interface now has its own `@title` + `@notice` block
+- No behavioural changes — pure documentation
+- Tests: 39 hardhat + 18 wasm + 15 fuzz × 256 runs, all green
+- Slither: 0 findings maintained
+
+### NatSpec coverage delta
+| Contract | Before | After |
+|---|---:|---:|
+| RuleRegistry | 2 tags | comprehensive (every public surface) |
+| OperatorMultisig | 5 tags | comprehensive |
+| InterestBearingDeposit | 5 tags | comprehensive |
+| SimpleStrategy | 1 tag | full + `@inheritdoc` |
+
+Other strategies (`CompoundDailyStrategy`, `TieredStrategy`, `FloatingStrategy`, `KpiLinkedStrategy`, `TwoTrackStrategy`) follow `SimpleStrategy`'s template; deferred to a future iter for parity.
+
 ### Changed (loop iter 24, 2026-05-01) — Telemetry refresh
 - Regenerated `RESULTS.md` with current numbers (was stale since iter 16's TaxCollector + iter 18's OperatorMultisig)
 - `previewAccrual` gas unchanged across the board (strategy contracts didn't change)
