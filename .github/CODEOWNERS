@@ -1,0 +1,19 @@
+# Default owner: anything not matched below
+*                              @lopezpalacios
+
+# Solidity contracts + tax/withholding logic — security-critical
+/contracts/                    @lopezpalacios
+/contracts/strategies/         @lopezpalacios
+
+# WASM rule engine + JSON schema (parity with Solidity must stay tight)
+/wasm/                         @lopezpalacios
+/rules/schema.json             @lopezpalacios
+
+# CI/CD + release pipeline (gates merges)
+/.github/workflows/            @lopezpalacios
+/.github/dependabot.yml        @lopezpalacios
+/Dockerfile                    @lopezpalacios
+/besu/docker-compose.yml       @lopezpalacios
+
+# Backend server (auth + sanctions + rate-limit pipeline)
+/scripts/server.mjs            @lopezpalacios

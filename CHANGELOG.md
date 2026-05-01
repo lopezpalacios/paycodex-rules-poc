@@ -4,6 +4,10 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 48, 2026-05-02) — CODEOWNERS + PR template
+- New `.github/CODEOWNERS`: routes reviews by area — `/contracts/`, `/wasm/`, `/.github/workflows/`, `/Dockerfile`, `/scripts/server.mjs` all default to `@lopezpalacios`
+- New `.github/pull_request_template.md`: structured checklist with separate sections for Solidity, WASM, and CI/infra changes — keeps the parity gate explicit ("run `npx hardhat compare:rule` for the touched rule") and codifies the Slither / fuzz expectations on every PR
+
 ### Repo hardening (loop iter 47, 2026-05-02) — Docker smoke is now a merge gate
 - After iter 46 confirmed `Docker image smoke build` is green and reliable, added it to the required status checks on `main`:
   - Required: `Slither static analysis`, `Build + test (WASM + Solidity + parity)`, `Docker image smoke build`
