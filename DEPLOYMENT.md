@@ -252,7 +252,7 @@ Beyond the PoC scope but required before issuance:
 - [x] **Operator role separation** — shipped iter 18. `OperatorMultisig.sol` is a K-of-N multisig contract. Set `RuleRegistry.operator = OperatorMultisig.address` to require K owners to approve every register/deprecate. Default: 2-of-3 for the demo. Production: 3-of-5 with owners across operations / risk / compliance, OR swap for Gnosis Safe (same `msg.sender == operator` interface).
 - [ ] **Slither + mutation runs gated on merge** — currently advisory; flip to required status checks
 - [x] **Witness data backup** — shipped iter 22. `besu/backup.sh` snapshots the chain volume to a SHA256-tagged tar.gz; `--restore <archive>` round-trips. Production env vars: `PAYCODEX_BACKUP_DEST=s3://...` for offsite, `PAYCODEX_BACKUP_KMS=alias/...` for KMS encryption (script has placeholders documenting where to wire `aws s3 cp --sse aws:kms`/`gcloud storage cp`). Schedule: hourly incremental + daily full via cron / systemd timer; quarterly restore-to-sandbox drill.
-- [ ] **Incident response runbook** — what to do if a strategy is exploited; `RuleRegistry.deprecate(ruleId)` is the kill switch
+- [x] **Incident response runbook** — shipped iter 23. [`docs/INCIDENT.md`](docs/INCIDENT.md) covers 9 incident classes with concrete commands: sanctioned address detected, Web3signer key compromise, bad rule registered, WHT remittance failure, customer dispute, chain halt, sanctions list update, rate-limit/auth incidents. Plus kill-switch cheat sheet, severity matrix, and tabletop drill schedule.
 
 ### 4.4 Going multi-bank
 

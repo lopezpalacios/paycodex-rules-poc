@@ -4,6 +4,38 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 23, 2026-05-01) — Incident response runbook
+- New `docs/INCIDENT.md` (~250 lines): 9 incident classes with severity matrix, concrete commands, and post-incident steps:
+  1. Sanctioned address detected at deploy time (SEV-2)
+  2. Web3signer / issuer key compromise suspected (SEV-1)
+  3. Bad rule registered (SEV-2)
+  4. WHT remittance failed (SEV-2)
+  5. Customer disputes posted interest (SEV-3)
+  6. Chain halted / validator down (SEV-3)
+  7. Sanctions list update needed (SEV-4 / SEV-1 if bypass)
+  8. Backend rate-limit + auth incidents (SEV-3)
+  9. Kill-switch cheat sheet (every granular lever, why no global pause)
+- Tabletop drill schedule (weekly backup, monthly multisig deprecate, quarterly key rotation, etc.)
+- Each playbook references actual contracts/scripts: `OperatorMultisig.cancel`, `RuleRegistry.deprecate`, `besu/backup.sh --restore`, `POST /api/admin/reload-blocklist`
+- DEPLOYMENT.md: "Incident response runbook" `[ ]` → `[x]`
+
+### Production hardening — final tally
+| Item | Status |
+|---|---|
+| Tax remittance | ✅ |
+| Backend auth | ✅ |
+| Sanctions screening | ✅ |
+| Operator multisig | ✅ |
+| Rate limiting | ✅ |
+| Customer auth (signed intent) | ✅ |
+| Witness data backup | ✅ |
+| Incident response runbook | ✅ |
+| Multi-validator Besu | ⚠️ template + caveat (Besu version-blocked, documented) |
+| mTLS on RPC | infra-class, not in code-class |
+| Gated CI status checks | GitHub config / org policy |
+
+8 of 11 fully closed. The remaining 3 are infra/process items outside this repo's scope.
+
 ### Added (loop iter 22, 2026-05-01) — Witness data backup + abandoned Besu version bump
 - New `besu/backup.sh` — snapshot/restore Besu volume:
   - `bash besu/backup.sh` → tar.gz of the chain volume to `besu/backups/`, SHA256-tagged
