@@ -4,6 +4,18 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed (loop iter 24, 2026-05-01) — Telemetry refresh
+- Regenerated `RESULTS.md` with current numbers (was stale since iter 16's TaxCollector + iter 18's OperatorMultisig)
+- `previewAccrual` gas unchanged across the board (strategy contracts didn't change)
+- `postInterest` increased ~12k gas — overhead of the iter-16 `IMintable.mint()` step that mints gross interest before WHT split (required for actual ERC20 movement, was previously counter-only)
+- Solidity coverage rerun: **92.5% lines / 78% statements / 64% branches / 72% functions** (line coverage held; functions improved from 69% → 72% via the multisig + TaxCollector tests)
+- Foundry fuzz suite still 15/15 passing × 256 runs each
+- Slither still 0 findings
+- README updated with current gas table + verified-results bullet
+
+### Honest gas regression note
+The +12k postInterest increase is structural, not a bug — without the mint step, the deposit's principal counter incremented but no actual tokens moved (iter-15 caveat documented in DEPLOYMENT.md as "limitation #1"). Iter 16 closed that limitation; the gas number reflects real value flow now.
+
 ### Added (loop iter 23, 2026-05-01) — Incident response runbook
 - New `docs/INCIDENT.md` (~250 lines): 9 incident classes with severity matrix, concrete commands, and post-incident steps:
   1. Sanctioned address detected at deploy time (SEV-2)
