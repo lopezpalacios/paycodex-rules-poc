@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 20, cache: npm }
       - run: npm ci --legacy-peer-deps
       - name: Run Slither
@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with: { submodules: recursive }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 20, cache: npm }
       - name: Install Node deps (for OZ contracts on remapping)
         run: npm ci
@@ -98,7 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
@@ -181,7 +181,7 @@ jobs:
     needs: build-test
     steps:
       - uses: actions/checkout@v6
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with: { node-version: 20, cache: npm }
       - run: npm ci --legacy-peer-deps
       - run: npm run wasm:build && npm run compile
