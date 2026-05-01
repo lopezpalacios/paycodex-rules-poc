@@ -244,9 +244,9 @@ Beyond the PoC scope but required before issuance:
 
 - [ ] **Multi-validator Besu** — minimum 4 validators for IBFT2 byzantine tolerance, distributed across availability zones
 - [ ] **mTLS on RPC** — Besu and Web3signer endpoints behind TLS with client cert auth
-- [ ] **Authentication on the Express backend** — current PoC accepts any caller; add OAuth2 / mutual-TLS / API keys per consumer
+- [x] **Authentication on the Express backend** — shipped iter 17. Bearer-token API keys via `PAYCODEX_API_KEYS=name:secret,…` + `PAYCODEX_ADMIN_KEYS=name,…`. Read endpoints require any key; `deploy-deposit` requires admin. `health` is unauthenticated for liveness probes. Production: swap static keys for OAuth2 / mTLS / SPIFFE.
 - [ ] **Rate limiting on `/api/deploy-deposit`** — limit per-customer per-day deploys
-- [ ] **Sanctions screening** — check `customer` against OFAC/EU sanctions lists before deploying
+- [x] **Sanctions screening** — shipped iter 17. `data/sanctions/blocklist.json` (lowercase address array) checked at the Express boundary before deploy. Returns HTTP 451 for blocked addresses (silent rejection — no tx submitted, no contract reach). Hot-reloadable via `POST /api/admin/reload-blocklist`. Production: wire to OFAC SDN / EU consolidated / Chainalysis / Elliptic.
 - [ ] **Customer authentication** — KYC + tax residency cert; map signed customer intent → backend deploy
 - [x] **Tax remittance contract** — `TaxCollector.sol` shipped iter 16. Each `postInterest()` mints the gross interest, transfers the WHT slice to the collector, and emits `recordCollection` audit event. Production: replace the open `MockERC20.mint` with a real bank treasury authority + wire `TaxCollector.remit(...)` to the actual tax-authority address (CH ESTV, etc.) on the regulator's schedule.
 - [ ] **Operator role separation** — `RuleRegistry.operator` should be a multisig, not a single EOA
@@ -386,8 +386,8 @@ Run `npm run wasm:build` first. The WASM binary is git-ignored.
 2. **Single-customer deposits** — production would use a pooled `Pattern B` (Aave-style index) for many holders per strategy
 3. **30/360 day-count** — approximated as act/360 in the math library; true 30/360 needs a date library (not gas-cheap)
 4. **act/act-ISDA** — simplified to act/365; leap-year handling not implemented
-5. **Sanctions screening** — none in the on-chain path; would integrate at the Express backend or via `T-REX` allowlist on the cash-leg token
-6. **Customer authentication** — none; backend accepts any POST. See production hardening checklist (§4.3).
+5. ~~Sanctions screening — none in the on-chain path~~ — **Closed in iter 17.** Backend now checks `customer` against `data/sanctions/blocklist.json` before deploy and returns HTTP 451 silently. On-chain belt-and-suspenders via T-REX allowlist on the cash-leg token still recommended.
+6. ~~Customer authentication — none; backend accepts any POST~~ — **Partially closed in iter 17.** Bearer-token API keys with reader/admin roles. Customer-side auth (signed intent, KYC certificate) is still upstream of the backend; the API-key model assumes a trusted onboarding service in front.
 7. **Mock oracles only** — no real Chainlink/Pyth integration; production must replace per ADR 0008
 8. **Coverage gaps** — current 92% line coverage; some library helpers (DayCount.fromString) only indirectly tested
 9. **Mutation testing** — workflow scaffolded but not yet baseline-run; first nightly campaign establishes the score

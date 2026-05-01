@@ -1,0 +1,40 @@
+meta {
+  name: POST /api/deploy-deposit (sanctioned address → 451)
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/deploy-deposit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "ruleId": "{{ruleId}}",
+    "customer": "0x0000000000000000000000000000000000000001",
+    "whtEnabled": false,
+    "whtBps": 0
+  }
+}
+
+assert {
+  res.status: eq 451
+  res.body.error: contains "blocked"
+}
+
+docs {
+  Negative test: customer address is in `data/sanctions/blocklist.json`.
+  Backend should refuse with HTTP 451 Unavailable For Legal Reasons.
+
+  No transaction is submitted; the on-chain factory is never reached.
+  Compliance teams can replay this request to verify the sanctions guard
+  is wired correctly post-deployment.
+}

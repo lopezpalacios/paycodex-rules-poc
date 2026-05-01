@@ -1,0 +1,28 @@
+meta {
+  name: GET /api/deployments (no auth → 401)
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/deployments
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 401
+  res.body.error: contains "Authorization"
+}
+
+docs {
+  Negative test: no Authorization header → backend returns 401 with a
+  message pointing the caller at the required header format.
+
+  Confirms the auth middleware is wired and reader/admin keys are
+  enforced on read + write paths.
+}

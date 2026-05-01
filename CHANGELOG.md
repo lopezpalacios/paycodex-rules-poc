@@ -4,6 +4,41 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 17, 2026-05-01) — Backend auth + sanctions screening
+- **Bearer-token API key middleware** on Express (`scripts/server.mjs`)
+  - `PAYCODEX_API_KEYS=name1:secret1,name2:secret2` env var (secret → name)
+  - `PAYCODEX_ADMIN_KEYS=name1,name2` env var declares admin roles
+  - Auth disabled when `PAYCODEX_API_KEYS` empty; loud warning at startup
+  - Per-route policy:
+    - `GET /api/health` — no auth (liveness probes)
+    - `GET /api/deployments` + `POST /api/preview-onchain` — any key
+    - `POST /api/deploy-deposit` + `POST /api/admin/reload-blocklist` — admin
+- **Sanctions blocklist screening** before every `deploy-deposit`
+  - `data/sanctions/blocklist.json` — flat array of lowercase addresses
+  - Hot-reloadable via `POST /api/admin/reload-blocklist`
+  - Returns HTTP 451 Unavailable For Legal Reasons (silent rejection — no on-chain reach)
+  - Includes 2 placeholder blocked addresses for negative-test exercising
+- Bruno collection updated:
+  - 2 new requests: `06-blocked-customer.bru` (asserts 451) + `07-no-auth.bru` (asserts 401)
+  - All authenticated requests carry `Authorization: Bearer {{readerKey|adminKey}}`
+  - Environment files declare `readerKey` + `adminKey` vars
+- DEPLOYMENT.md hardening checklist:
+  - "Authentication on the Express backend" — `[ ]` → `[x]`
+  - "Sanctions screening" — `[ ]` → `[x]`
+- "Known PoC limitations" #5 + #6 marked closed
+
+### Verified end-to-end on real Besu+Web3signer
+| Probe | Expected | Got |
+|---|---|---|
+| GET /api/health (no auth) | 200, auth=enabled, blocklistSize=2 | ✅ |
+| GET /api/deployments (no auth) | 401 | ✅ |
+| GET /api/deployments (reader key) | 200 | ✅ |
+| POST /api/deploy-deposit (reader key) | 403 "lacks admin role" | ✅ |
+| POST /api/deploy-deposit (admin, blocked addr) | 451 "address blocked" | ✅ |
+| POST /api/deploy-deposit (admin, clean) | 200, deposit at 0x98Ba…, gas 672,925 | ✅ |
+
+Slither still 0 findings. 33 Hardhat + 18 WASM + 15 fuzz tests all green.
+
 ### Added (loop iter 16, 2026-05-01) — WHT remittance is now real
 - New `TaxCollector` contract — single destination for WHT remittance from many deposits; records each collection as event for audit
 - New `ITaxCollector` interface in `contracts/interfaces/`
