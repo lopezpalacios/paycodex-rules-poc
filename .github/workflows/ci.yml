@@ -83,7 +83,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: build-test
-    if: false   # enabled in iter 4 once real genesis is generated
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -93,18 +92,31 @@ jobs:
       - name: Start Besu
         run: |
           docker compose -f besu/docker-compose.yml up -d
-          for i in {1..30}; do
-            if curl -s -X POST -H "Content-Type: application/json" \
+          echo "Waiting for Besu to be ready and producing blocks..."
+          for i in {1..60}; do
+            BLOCK=$(curl -s -X POST -H "Content-Type: application/json" \
                 --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-                http://127.0.0.1:8545 | grep -q result; then
-              echo "Besu up"; exit 0
+                http://127.0.0.1:8545 | grep -oE '"result":"0x[0-9a-f]+"' || true)
+            if [ -n "$BLOCK" ]; then
+              echo "Besu up: $BLOCK"; exit 0
             fi
             sleep 2
           done
-          echo "Besu failed to start"; exit 1
-      - name: Deploy a rule
+          echo "Besu failed to start"
+          docker compose -f besu/docker-compose.yml logs --tail=50
+          exit 1
+      - name: Deploy a rule on Besu
         run: |
           RULE=rules/examples/01-simple-act360.json npx hardhat run scripts/deploy.ts --network besu
+          # Verify a few more rules deploy too
+          RULE=rules/examples/03-tiered-savings.json npx hardhat run scripts/deploy.ts --network besu
+          RULE=rules/examples/06-floor-cap.json npx hardhat run scripts/deploy.ts --network besu
+      - name: Show deployment receipts
+        if: always()
+        run: cat .deployments/besu.json || true
+      - name: Besu logs (on failure)
+        if: failure()
+        run: docker compose -f besu/docker-compose.yml logs --tail=100
       - name: Stop Besu
         if: always()
-        run: docker compose -f besu/docker-compose.yml down
+        run: docker compose -f besu/docker-compose.yml down -v

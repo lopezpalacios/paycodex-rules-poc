@@ -3,6 +3,7 @@ services:
     image: hyperledger/besu:24.3.0
     container_name: paycodex-besu
     restart: unless-stopped
+    user: root              # dev-only: avoid /data perm issues with named volume
     ports:
       - "8545:8545"
       - "8546:8546"

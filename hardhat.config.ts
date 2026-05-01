@@ -15,10 +15,14 @@ const config: HardhatUserConfig = {
     besu: {
       url: process.env.BESU_RPC ?? "http://127.0.0.1:8545",
       chainId: 1337,
+      // Generator-produced validator key (besu/key); funded in genesis alloc.
+      // To regenerate: see besu/README.md.
       accounts: [
-        "0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63",
+        "0xcfb783f7e27a219c60aea627810ab4d3dd8352539f45c75d3eda3c9e4a401e1d",
       ],
-      gasPrice: 0,
+      // Besu enforces a minimum even when --min-gas-price=0 if EIP-1559 baseFee > 0.
+      // Use 1 gwei type-0 (legacy) transactions to keep cost trivial but above floor.
+      gasPrice: 1_000_000_000,
     },
   },
   gasReporter: {
