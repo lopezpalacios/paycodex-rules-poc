@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write   # for creating releases
+
+jobs:
+  build-and-release:
+    name: Build artifacts + create GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # so version derivation can see tags
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+
+      - name: Install
+        run: npm ci
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build WASM (release)
+        run: npm run wasm:build
+
+      - name: Compile contracts
+        run: npm run compile
+
+      - name: Build UI bundle
+        run: npm run ui:build
+
+      - name: Validate rules
+        run: npm run validate:rules
+
+      - name: Package WASM
+        run: |
+          mkdir -p release
+          cd wasm/build && zip -r ../../release/paycodex-rules-wasm-${{ steps.tag.outputs.tag }}.zip . && cd -
+
+      - name: Package UI bundle
+        run: |
+          cd dist/ui && zip -r ../../release/paycodex-rules-ui-${{ steps.tag.outputs.tag }}.zip . && cd -
+
+      - name: Package compiled artifacts (Hardhat ABIs)
+        run: |
+          cd artifacts && zip -r ../release/paycodex-rules-artifacts-${{ steps.tag.outputs.tag }}.zip contracts/ && cd -
+
+      - name: Package rule examples
+        run: |
+          cd rules && zip -r ../release/paycodex-rules-examples-${{ steps.tag.outputs.tag }}.zip examples/ schema.json && cd -
+
+      - name: Generate release notes from CHANGELOG
+        id: notes
+        run: |
+          # Pull the most recent "## [Unreleased]" or "## [vX.Y.Z]" section
+          awk '/^## \[/{c++} c==1{print} c==2{exit}' CHANGELOG.md > release-notes.md
+          echo "Wrote $(wc -l < release-notes.md) lines"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body_path: release-notes.md
+          files: |
+            release/*.zip
+          generate_release_notes: false
+          fail_on_unmatched_files: true

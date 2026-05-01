@@ -4,6 +4,22 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 35, 2026-05-02) — Release workflow + Dependabot
+- New `.github/workflows/release.yml`:
+  - Triggers on `v*.*.*` tag push or `workflow_dispatch` with explicit tag input
+  - Builds WASM (release), Hardhat ABIs, UI bundle, validates rule examples
+  - Packages 4 zip artifacts: `wasm`, `ui`, `artifacts` (ABIs), `examples` (rules + schema)
+  - Auto-generates release notes from the most recent `## [Unreleased]`/`## [vX.Y.Z]` section in CHANGELOG.md (awk-based extraction, no jq surprises)
+  - Uses `softprops/action-gh-release@v2` with `fail_on_unmatched_files: true` to guard against silent regressions
+- New `.github/dependabot.yml`:
+  - Weekly npm updates (Monday), grouped by domain to keep PR noise bounded:
+    - `hardhat-toolchain` — `@nomicfoundation/*`, `hardhat*`
+    - `ethers` — `ethers`, `@ethersproject/*`
+    - `dev-tooling` — `typescript`, `vite`, `@types/*`, `solhint*`, `ajv*`
+  - Weekly GitHub Actions updates (separate ecosystem, separate cap)
+  - Sensible PR caps: 5 npm / 3 actions
+- Cutting a release is now: `git tag v0.2.0 && git push --tags` → CI does the rest.
+
 ### Added (loop iter 34, 2026-05-02) — `deploy:all --with-pools` + CI pool e2e
 - Extended `tasks/deploy-all.ts`:
   - New `--with-pools` flag deploys an `InterestBearingPool` (Pattern B) for every rule alongside its `InterestBearingDeposit` (Pattern A)

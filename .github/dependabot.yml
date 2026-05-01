@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      hardhat-toolchain:
+        patterns:
+          - "@nomicfoundation/*"
+          - "hardhat*"
+      ethers:
+        patterns:
+          - "ethers"
+          - "@ethersproject/*"
+      dev-tooling:
+        patterns:
+          - "typescript"
+          - "ts-node"
+          - "vite"
+          - "@types/*"
+          - "solhint*"
+          - "ajv*"
+    labels:
+      - "dependencies"
+      - "automated"
+    commit-message:
+      prefix: "deps"
+      include: "scope"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 3
+    labels:
+      - "ci"
+      - "automated"
+    commit-message:
+      prefix: "ci"
