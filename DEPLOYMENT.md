@@ -249,7 +249,7 @@ Beyond the PoC scope but required before issuance:
 - [x] **Sanctions screening** — shipped iter 17. `data/sanctions/blocklist.json` (lowercase address array) checked at the Express boundary before deploy. Returns HTTP 451 for blocked addresses (silent rejection — no tx submitted, no contract reach). Hot-reloadable via `POST /api/admin/reload-blocklist`. Production: wire to OFAC SDN / EU consolidated / Chainalysis / Elliptic.
 - [ ] **Customer authentication** — KYC + tax residency cert; map signed customer intent → backend deploy
 - [x] **Tax remittance contract** — `TaxCollector.sol` shipped iter 16. Each `postInterest()` mints the gross interest, transfers the WHT slice to the collector, and emits `recordCollection` audit event. Production: replace the open `MockERC20.mint` with a real bank treasury authority + wire `TaxCollector.remit(...)` to the actual tax-authority address (CH ESTV, etc.) on the regulator's schedule.
-- [ ] **Operator role separation** — `RuleRegistry.operator` should be a multisig, not a single EOA
+- [x] **Operator role separation** — shipped iter 18. `OperatorMultisig.sol` is a K-of-N multisig contract. Set `RuleRegistry.operator = OperatorMultisig.address` to require K owners to approve every register/deprecate. Default: 2-of-3 for the demo. Production: 3-of-5 with owners across operations / risk / compliance, OR swap for Gnosis Safe (same `msg.sender == operator` interface).
 - [ ] **Slither + mutation runs gated on merge** — currently advisory; flip to required status checks
 - [ ] **Witness data backup** — Besu chain data → S3 / GCS with point-in-time recovery
 - [ ] **Incident response runbook** — what to do if a strategy is exploited; `RuleRegistry.deprecate(ruleId)` is the kill switch

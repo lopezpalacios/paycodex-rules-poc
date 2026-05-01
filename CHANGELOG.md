@@ -4,6 +4,25 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 18, 2026-05-01) — Operator multisig
+- New `OperatorMultisig.sol` — K-of-N multisig contract that wraps any single-operator target (e.g. `RuleRegistry`). Submit/approve/cancel/auto-execute on threshold. ~120 LOC, 9 typed errors, zero deps.
+- Per-proposal storage: `target`, `data`, `approvals`, `executed`, `cancelled`. Approval bitmap via `mapping(uint256 → mapping(address → bool))`.
+- Constructor invariants enforced: non-empty owners, threshold ∈ [1, owners.length], no duplicate or zero-address owners, owner count ≤ 32 (uint16 approval counter).
+- New test suite `test/06-multisig.test.ts` — 6 tests:
+  - Constructor invariants reject all 5 bad-arg shapes
+  - Non-owner cannot submit/approve/cancel
+  - 2-of-3 happy path through `RuleRegistry.register` (auto-approves on submit, executes on second approval)
+  - Double-approve, post-execute approve, cancelled approve all reverted
+  - Cancellation prevents further state change
+  - 3-of-3 requires every owner before execute
+- DEPLOYMENT.md hardening checklist: "Operator role separation" `[ ]` → `[x]`
+- Tests now: 39 Hardhat (was 33) + 18 WASM + 15 fuzz × 256 runs
+- Slither: 0 findings maintained (one new `reentrancy-events` flagged on `_execute` event-after-call; suppressed inline because state write `executed=true` precedes the call — re-entry hits AlreadyExecuted)
+
+### Production hardening status (8/11 closed)
+- ✅ Tax remittance · ✅ Auth · ✅ Sanctions screening · ✅ Operator multisig
+- Still open: multi-validator Besu, mTLS, rate limiting, customer KYC auth, gated CI checks (advisory → required), witness backup, incident runbook
+
 ### Added (loop iter 17, 2026-05-01) — Backend auth + sanctions screening
 - **Bearer-token API key middleware** on Express (`scripts/server.mjs`)
   - `PAYCODEX_API_KEYS=name1:secret1,name2:secret2` env var (secret → name)
