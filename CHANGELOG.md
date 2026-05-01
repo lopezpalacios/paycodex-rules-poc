@@ -4,6 +4,15 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 8, 2026-05-01)
+- **Slither** static analysis wired in CI; SARIF → GitHub code-scanning + artifact
+- `slither.config.json` (solc remap, filter_paths for mocks/lib, exclude `timestamp` false-positive detector)
+- 12 baseline findings → **0** after triage (3 fixed via math refactor, 5 fixed with ZeroAddress checks, 1 fixed via cached array length, 2 intentional staticcall suppressed inline, 4 false-positive timestamp compares excluded by config)
+- New `ZeroAddress` custom error in `InterestBearingDeposit` and `RuleRegistry`
+- `TwoTrackStrategy.previewAccrual` and `previewEcr` refactored to single division at end (avoids divide-before-multiply precision loss; equivalent integer math, verified by parity tests)
+- `TieredStrategy` caches `_tiers.length` outside the loop
+- CI: new `slither` job with `permissions: security-events: write`, `fail-on: medium`
+
 ### Added (loop iter 7, 2026-05-01)
 - `scripts/gas-bench.ts` — per-strategy gas benchmarks: deployment + previewAccrual (estimated) + full deposit lifecycle (deposit/postInterest/withdraw)
 - Generates `RESULTS.md` with markdown table + data-derived notes (no hard-coded multipliers; comparisons computed from actual numbers)
