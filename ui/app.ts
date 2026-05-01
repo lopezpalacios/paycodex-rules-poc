@@ -1,10 +1,40 @@
 // Browser entry. Loads release.wasm, fetches selected rule JSON, runs preview on click.
-// To deploy on-chain: see README — uses Hardhat scripts/deploy.ts (browser deploy via MetaMask is intentionally
-// out of scope for this PoC; preview parity with Solidity is the demo target).
+// With MetaMask connected: also queries the on-chain strategy at the deployed address
+// and shows parity (WASM vs Solidity), and can deploy a new InterestBearingDeposit.
+
+import { BrowserProvider, Contract, ethers, type Signer } from "ethers";
 
 const BASIS: Record<string, number> = { "act/360": 0, "act/365": 1, "30/360": 2, "act/act-isda": 3 };
 
+const NETWORK_BY_CHAINID: Record<string, string> = {
+  "0x7a69": "hardhat",   // 31337
+  "0x539": "besu",       // 1337
+};
+
+const STRATEGY_ABI = [
+  "function previewAccrual(uint256 balance, uint64 fromTs, uint64 toTs) view returns (uint256)",
+  "function kind() view returns (string)",
+  "function dayCount() view returns (string)",
+];
+
+const REGISTRY_ABI = [
+  "function get(bytes32 ruleId) view returns (tuple(address strategy, string kind, string dayCount, bytes32 ruleHash, uint64 registeredAt, bool deprecated))",
+  "function count() view returns (uint256)",
+  "function ruleIds(uint256) view returns (bytes32)",
+];
+
+const FACTORY_ABI = [
+  "function deploy(bytes32 ruleId, address asset, address customer, bool whtEnabled, uint256 whtBps) returns (address)",
+  "event DepositDeployed(bytes32 indexed ruleId, address indexed customer, address indexed deposit, address strategy)",
+];
+
 let wasm: any;
+let provider: BrowserProvider | null = null;
+let signer: Signer | null = null;
+let deployments: Record<string, string> = {};
+let networkName = "?";
+
+// === WASM loading ===
 
 async function loadWasm() {
   const res = await fetch("../wasm/build/release.wasm");
@@ -24,9 +54,15 @@ async function loadRuleFile(filename: string) {
   return await res.json();
 }
 
-function preview(rule: any, balance: bigint, fromTs: bigint, toTs: bigint, oracle = 0n, kpi = 0n) {
+function ruleIdToBytes32(id: string): string {
+  return ethers.encodeBytes32String(id.slice(0, 31));
+}
+
+// === Preview dispatch (mirror of test/03-parity.test.ts logic) ===
+
+function previewWasm(rule: any, balance: bigint, fromTs: bigint, toTs: bigint, oracle = 0n, kpi = 0n) {
   const basis = BASIS[rule.dayCount];
-  let gross: bigint = 0n;
+  let gross = 0n;
   let ecr: bigint | null = null;
 
   switch (rule.kind) {
@@ -37,12 +73,20 @@ function preview(rule: any, balance: bigint, fromTs: bigint, toTs: bigint, oracl
       gross = wasm.previewCompound(balance, rule.ratePolicy.fixedBps, basis, fromTs, toTs);
       break;
     case "tiered": {
+      // JS-side slice (mirrors test/03-parity.test.ts)
       const tiers = rule.ratePolicy.tiers;
-      const upTos = tiers.map((t: any) => (t.upTo === "max" ? 0xffffffffffffffffn : BigInt(t.upTo)));
-      const bps = tiers.map((t: any) => t.bps);
-      const ut = wasm.__newArray(wasm.StaticArray_u64_ID, upTos);
-      const bp = wasm.__newArray(wasm.StaticArray_u32_ID, bps);
-      gross = wasm.previewTiered(balance, ut, bp, basis, fromTs, toTs);
+      let prev = 0n;
+      let sum = 0n;
+      for (const t of tiers) {
+        const upTo = t.upTo === "max" ? 0xffffffffffffffffn : BigInt(t.upTo);
+        if (balance <= prev) break;
+        const sliceTop = balance < upTo ? balance : upTo;
+        const slice = sliceTop - prev;
+        sum += wasm.previewSimple(slice, t.bps, basis, fromTs, toTs);
+        prev = upTo;
+        if (balance <= upTo) break;
+      }
+      gross = sum;
       break;
     }
     case "floating": {
@@ -93,6 +137,152 @@ function preview(rule: any, balance: bigint, fromTs: bigint, toTs: bigint, oracl
   return { gross, net, ecr };
 }
 
+// === Wallet ===
+
+async function connectWallet() {
+  const eth = (window as any).ethereum;
+  const banner = document.getElementById("wallet-banner")!;
+  const statusEl = document.getElementById("wallet-status")!;
+  if (!eth) {
+    banner.classList.add("error");
+    statusEl.textContent = "No window.ethereum — install MetaMask.";
+    return;
+  }
+  try {
+    provider = new BrowserProvider(eth);
+    await eth.request({ method: "eth_requestAccounts" });
+    signer = await provider.getSigner();
+    const addr = await signer.getAddress();
+    const cid: string = await eth.request({ method: "eth_chainId" });
+    networkName = NETWORK_BY_CHAINID[cid] ?? "?";
+    banner.classList.add("connected");
+    statusEl.textContent = `Connected: ${addr.slice(0, 8)}…${addr.slice(-4)} on chainId=${parseInt(cid, 16)} (${networkName})`;
+    await loadDeployments();
+    enableChainButtons();
+  } catch (e: any) {
+    banner.classList.add("error");
+    statusEl.textContent = `Connection failed: ${e.message}`;
+  }
+}
+
+async function loadDeployments() {
+  const out = document.getElementById("deployments")!;
+  try {
+    const res = await fetch(`../.deployments/${networkName}.json`);
+    if (!res.ok) {
+      out.textContent = `No .deployments/${networkName}.json — run \`npm run deploy:all\` against this network first.`;
+      return;
+    }
+    deployments = await res.json();
+    const lines = Object.entries(deployments).map(([k, v]) => `  ${k.padEnd(40)} ${v}`);
+    out.textContent = `network: ${networkName}\n${lines.join("\n")}`;
+  } catch (e: any) {
+    out.textContent = `Error loading deployments: ${e.message}`;
+  }
+}
+
+function enableChainButtons() {
+  const ok = signer !== null && Object.keys(deployments).length > 0;
+  (document.getElementById("compare") as HTMLButtonElement).disabled = !ok;
+  (document.getElementById("deploy") as HTMLButtonElement).disabled = !ok;
+}
+
+// === Compare WASM vs on-chain ===
+
+async function compareWithChain() {
+  const out = document.getElementById("output") as HTMLDivElement;
+  if (!provider || !signer) {
+    out.textContent = "wallet not connected.";
+    return;
+  }
+  try {
+    const ta = document.getElementById("ruleJson") as HTMLTextAreaElement;
+    const rule = JSON.parse(ta.value);
+    const balance = BigInt((document.getElementById("balance") as HTMLInputElement).value);
+    const days = BigInt((document.getElementById("days") as HTMLInputElement).value);
+    const oracle = BigInt((document.getElementById("oracle") as HTMLInputElement).value);
+    const kpi = BigInt((document.getElementById("kpi") as HTMLInputElement).value);
+    const fromTs = 1_700_000_000n;
+    const toTs = fromTs + days * 86400n;
+
+    const stratAddr = deployments[`Strategy_${rule.ruleId}`];
+    if (!stratAddr) {
+      out.textContent = `No deployed strategy for ruleId ${rule.ruleId} on ${networkName}.\nRun \`npm run deploy:all --network ${networkName}\`.`;
+      return;
+    }
+
+    const strat = new Contract(stratAddr, STRATEGY_ABI, signer);
+    const onChainGross: bigint = await strat.previewAccrual(balance, fromTs, toTs);
+
+    const wasmRes = previewWasm(rule, balance, fromTs, toTs, oracle, kpi);
+    const diff = wasmRes.gross > onChainGross ? wasmRes.gross - onChainGross : onChainGross - wasmRes.gross;
+    const tolerance = rule.kind === "compound" ? wasmRes.gross / 1000n : wasmRes.gross / 10000n;
+    const pass = diff <= (tolerance > 0n ? tolerance : 1n);
+
+    const lines = [
+      `rule:           ${rule.ruleId}`,
+      `kind:           ${rule.kind}`,
+      `network:        ${networkName}`,
+      `strategy:       ${stratAddr}`,
+      `balance:        ${balance}`,
+      `period:         ${days} days`,
+      ``,
+      `WASM gross:     ${wasmRes.gross}`,
+      `Solidity gross: ${onChainGross}`,
+      `abs diff:       ${diff}   (tolerance ${tolerance})`,
+      `parity:         ${pass ? "✔ PASS" : "✗ FAIL"}`,
+    ];
+    if (wasmRes.ecr !== null) lines.push(`WASM ecr:       ${wasmRes.ecr}`);
+    out.textContent = lines.join("\n");
+  } catch (e: any) {
+    out.textContent = `error: ${e.message}\n${e.stack ?? ""}`;
+  }
+}
+
+// === Deploy a new InterestBearingDeposit via factory ===
+
+async function deployDeposit() {
+  const out = document.getElementById("output") as HTMLDivElement;
+  if (!provider || !signer) {
+    out.textContent = "wallet not connected.";
+    return;
+  }
+  try {
+    const ta = document.getElementById("ruleJson") as HTMLTextAreaElement;
+    const rule = JSON.parse(ta.value);
+    const factoryAddr = deployments["DepositFactory"];
+    const usdcAddr = deployments["MockUSDC"];
+    if (!factoryAddr || !usdcAddr) {
+      out.textContent = "DepositFactory or MockUSDC missing in deployments file.";
+      return;
+    }
+    const factory = new Contract(factoryAddr, FACTORY_ABI, signer);
+    const ruleIdB32 = ruleIdToBytes32(rule.ruleId);
+    const whtEnabled = !!rule.withholding?.enabled;
+    const whtBps = rule.withholding?.rateBps ?? 0;
+    const customer = await signer.getAddress();
+    out.textContent = "submitting deploy tx — confirm in MetaMask…";
+    const tx = await factory.deploy(ruleIdB32, usdcAddr, customer, whtEnabled, whtBps);
+    out.textContent = `tx submitted: ${tx.hash}\nwaiting for confirmation…`;
+    const rcpt = await tx.wait();
+    let depositAddr = "?";
+    for (const log of rcpt!.logs) {
+      try {
+        const parsed = factory.interface.parseLog(log);
+        if (parsed?.name === "DepositDeployed") {
+          depositAddr = parsed.args.deposit;
+          break;
+        }
+      } catch {}
+    }
+    out.textContent = `deposit deployed at ${depositAddr}\ntx: ${tx.hash}\ngas used: ${rcpt!.gasUsed}\nblock: ${rcpt!.blockNumber}`;
+  } catch (e: any) {
+    out.textContent = `error: ${e.message}`;
+  }
+}
+
+// === Init ===
+
 async function init() {
   await loadWasm();
   const sel = document.getElementById("rule") as HTMLSelectElement;
@@ -104,8 +294,11 @@ async function init() {
   sel.addEventListener("change", refresh);
   await refresh();
 
-  const btn = document.getElementById("run") as HTMLButtonElement;
-  btn.addEventListener("click", () => {
+  document.getElementById("connect-wallet")!.addEventListener("click", connectWallet);
+  document.getElementById("compare")!.addEventListener("click", compareWithChain);
+  document.getElementById("deploy")!.addEventListener("click", deployDeposit);
+
+  document.getElementById("run")!.addEventListener("click", () => {
     try {
       const rule = JSON.parse(ta.value);
       const balance = BigInt((document.getElementById("balance") as HTMLInputElement).value);
@@ -114,7 +307,7 @@ async function init() {
       const kpi = BigInt((document.getElementById("kpi") as HTMLInputElement).value);
       const fromTs = 1_700_000_000n;
       const toTs = fromTs + days * 86400n;
-      const r = preview(rule, balance, fromTs, toTs, oracle, kpi);
+      const r = previewWasm(rule, balance, fromTs, toTs, oracle, kpi);
       const lines = [
         `rule:    ${rule.ruleId}`,
         `kind:    ${rule.kind}`,

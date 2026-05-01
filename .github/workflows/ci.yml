@@ -52,6 +52,9 @@ jobs:
         run: npm run coverage 2>&1 | tee coverage-summary.txt
         continue-on-error: true
 
+      - name: Build UI bundle
+        run: npm run ui:build
+
       - name: Upload gas report
         if: always()
         uses: actions/upload-artifact@v4
@@ -77,6 +80,13 @@ jobs:
           name: wasm-build
           path: wasm/build/
           if-no-files-found: error
+
+      - name: Upload UI bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-bundle
+          path: dist/ui/
+          if-no-files-found: ignore
 
   besu-e2e:
     name: Besu IBFT2 end-to-end deploy
@@ -105,12 +115,16 @@ jobs:
           echo "Besu failed to start"
           docker compose -f besu/docker-compose.yml logs --tail=50
           exit 1
-      - name: Deploy a rule on Besu
-        run: |
-          RULE=rules/examples/01-simple-act360.json npx hardhat run scripts/deploy.ts --network besu
-          # Verify a few more rules deploy too
-          RULE=rules/examples/03-tiered-savings.json npx hardhat run scripts/deploy.ts --network besu
-          RULE=rules/examples/06-floor-cap.json npx hardhat run scripts/deploy.ts --network besu
+      - name: Deploy ALL 8 rules on Besu (single-process)
+        run: npx hardhat run scripts/deploy-all.ts --network besu
+
+      - name: Upload deployment receipts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: besu-deployments
+          path: .deployments/besu.json
+          if-no-files-found: ignore
       - name: Show deployment receipts
         if: always()
         run: cat .deployments/besu.json || true
