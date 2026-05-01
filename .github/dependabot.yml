@@ -29,6 +29,20 @@ updates:
     commit-message:
       prefix: "deps"
       include: "scope"
+    ignore:
+      # Hardhat 3 is a deliberate migration, not an auto-merge candidate.
+      # Track manually; reopen path is a separate iter.
+      - dependency-name: "hardhat"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@nomicfoundation/*"
+        update-types: ["version-update:semver-major"]
+      # solhint 6 dropped Node 18 + tightened rules — needs hand-tuning of our config
+      - dependency-name: "solhint"
+        update-types: ["version-update:semver-major"]
+      # @types/node major bumps tend to land before Node runtime majors;
+      # we pin runtime to 20, so 20.x types are correct.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -41,3 +55,8 @@ updates:
       - "automated"
     commit-message:
       prefix: "ci"
+    ignore:
+      # upload-artifact@v7 changes default to single-file direct upload —
+      # we upload directories (coverage/, dist/ui/) so v4 is the right line.
+      - dependency-name: "actions/upload-artifact"
+        update-types: ["version-update:semver-major"]

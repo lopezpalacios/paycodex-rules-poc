@@ -4,6 +4,19 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Repo hardening (loop iter 42, 2026-05-02) — Dependabot ignores for breaking-change majors
+- **Closed 3 incompatible PRs** with rationale:
+  - #1 `actions/upload-artifact` 4 → 7 — v7 defaults to single-file direct upload; we upload directories (`coverage/`, `dist/ui/`)
+  - #5 hardhat-toolchain group (Hardhat 2 → 3 + 8 plugin majors) — deliberate migration, not auto-merge
+  - #6 dev-tooling group (`@types/node` 20 → 25, `solhint` 5 → 6, `typescript`, `vite` majors) — Build+test fails after rebase; needs split per-package PRs
+- **Merged 2 freshly-rebased PRs** that went green:
+  - #4 `softprops/action-gh-release` 2 → 3
+  - #8 `assemblyscript` 0.27 → 0.28
+- **Added `ignore` blocks to `dependabot.yml`** to stop these majors from coming back every week:
+  - npm: `hardhat` major, `@nomicfoundation/*` major, `solhint` major, `@types/node` major (we pin runtime to Node 20)
+  - github-actions: `actions/upload-artifact` major (v4 line is the right one for directory uploads)
+- Net Dependabot state: **0 open PRs**, ignore rules are explicit and load-bearing.
+
 ### Repo hardening (loop iter 41, 2026-05-02) — Dependabot triage + branch protection
 - **Merged 3 Dependabot PRs** (squash + delete branch):
   - #2 `actions/checkout` 4 → 6
