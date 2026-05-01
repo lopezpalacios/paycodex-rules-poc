@@ -1,0 +1,16 @@
+{
+  "ruleId": "compound-daily-eur-300",
+  "description": "Retail savings. 3.00% fixed, daily compounding, 30/360, monthly posting.",
+  "currency": "EUR",
+  "kind": "compound",
+  "dayCount": "30/360",
+  "ratePolicy": {
+    "type": "fixed",
+    "fixedBps": 300
+  },
+  "compounding": "daily",
+  "postingFrequency": "monthly",
+  "metadata": {
+    "kgRef": "paycodex/concepts/interest-calculation.md#compound"
+  }
+}

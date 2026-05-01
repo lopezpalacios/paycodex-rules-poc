@@ -1,0 +1,20 @@
+{
+  "ruleId": "floor-cap-floating",
+  "description": "€STR + 25bps with negative-rate floor at 0% and ceiling at 10%. Protects retail from negative pass-through.",
+  "currency": "EUR",
+  "kind": "floating",
+  "dayCount": "act/360",
+  "ratePolicy": {
+    "type": "reference-plus-spread",
+    "referenceFeed": "0x0000000000000000000000000000000000000000",
+    "referenceName": "ESTR",
+    "spreadBps": 25
+  },
+  "floorBps": 0,
+  "capBps": 1000,
+  "compounding": "none",
+  "postingFrequency": "monthly",
+  "metadata": {
+    "kgRef": "paycodex/concepts/negative-interest.md"
+  }
+}

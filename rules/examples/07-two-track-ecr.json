@@ -1,0 +1,21 @@
+{
+  "ruleId": "two-track-ecr-50-50",
+  "description": "US-style commercial. 50% hard interest (cash, taxable), 50% ECR (fee offset only). 3.50% headline, 10% reserve req.",
+  "currency": "USD",
+  "kind": "two-track",
+  "dayCount": "act/360",
+  "ratePolicy": {
+    "type": "fixed",
+    "fixedBps": 350
+  },
+  "compounding": "none",
+  "postingFrequency": "monthly",
+  "twoTrack": {
+    "ecrPortion": 0.5,
+    "hardInterestPortion": 0.5,
+    "reserveRequirementBps": 1000
+  },
+  "metadata": {
+    "kgRef": "paycodex/concepts/ecr.md"
+  }
+}

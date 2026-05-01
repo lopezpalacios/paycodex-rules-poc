@@ -1,0 +1,21 @@
+{
+  "ruleId": "ch-vst-savings",
+  "description": "Swiss CHF retail savings. 1.50% fixed simple, act/365, 35% Verrechnungssteuer (Swiss withholding tax) deducted at posting.",
+  "currency": "CHF",
+  "kind": "simple",
+  "dayCount": "act/365",
+  "ratePolicy": {
+    "type": "fixed",
+    "fixedBps": 150
+  },
+  "compounding": "none",
+  "postingFrequency": "quarterly",
+  "withholding": {
+    "enabled": true,
+    "rateBps": 3500,
+    "regime": "CH-VST"
+  },
+  "metadata": {
+    "kgRef": "paycodex/concepts/withholding-tax.md"
+  }
+}

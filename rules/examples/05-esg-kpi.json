@@ -1,0 +1,19 @@
+{
+  "ruleId": "esg-kpi-linked",
+  "description": "ESG-linked deposit. Base 4.00% spread, ±100bps adjustment from KPI oracle (e.g., GHG target). act/360, simple.",
+  "currency": "EUR",
+  "kind": "kpi-linked",
+  "dayCount": "act/360",
+  "ratePolicy": {
+    "type": "kpi-adjusted",
+    "baseSpreadBps": 400,
+    "kpiOracle": "0x0000000000000000000000000000000000000000",
+    "adjustmentRangeBps": [-100, 100]
+  },
+  "compounding": "none",
+  "postingFrequency": "quarterly",
+  "metadata": {
+    "kgRef": "paycodex-onchain/code/69-esg-linked-loan.sol",
+    "note": "kpiOracle populated at deploy time"
+  }
+}

@@ -1,0 +1,99 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IInterestStrategy} from "./interfaces/IInterestStrategy.sol";
+
+/// @title InterestBearingDeposit
+/// @notice Single-customer deposit that accrues interest per a pluggable strategy. Posted on demand or at redemption.
+/// @dev Demo: avg-daily-balance approximated by point-in-time balance at posting. Production would track weighted balance.
+contract InterestBearingDeposit {
+    using SafeERC20 for IERC20;
+
+    IERC20 public immutable asset;
+    IInterestStrategy public immutable strategy;
+    address public immutable customer;
+    bytes32 public immutable ruleId;
+
+    uint256 public principal;       // current outstanding principal
+    uint256 public accruedInterest; // accrued but unposted
+    uint64  public lastPostedAt;
+
+    // Withholding (optional)
+    bool    public immutable whtEnabled;
+    uint256 public immutable whtBps;
+
+    event Deposited(uint256 amount, uint256 newPrincipal);
+    event Withdrawn(uint256 amount, uint256 newPrincipal);
+    event Posted(uint256 grossInterest, uint256 whtAmount, uint256 netCredited, uint64 atTs);
+
+    error NotCustomer();
+    error InsufficientFunds();
+
+    constructor(
+        IERC20 asset_,
+        IInterestStrategy strategy_,
+        address customer_,
+        bytes32 ruleId_,
+        bool whtEnabled_,
+        uint256 whtBps_
+    ) {
+        asset = asset_;
+        strategy = strategy_;
+        customer = customer_;
+        ruleId = ruleId_;
+        whtEnabled = whtEnabled_;
+        whtBps = whtBps_;
+        lastPostedAt = uint64(block.timestamp);
+    }
+
+    modifier onlyCustomer() {
+        if (msg.sender != customer) revert NotCustomer();
+        _;
+    }
+
+    function deposit(uint256 amount) external onlyCustomer {
+        _accrueToNow();
+        asset.safeTransferFrom(msg.sender, address(this), amount);
+        principal += amount;
+        emit Deposited(amount, principal);
+    }
+
+    function withdraw(uint256 amount) external onlyCustomer {
+        _accrueToNow();
+        if (amount > principal) revert InsufficientFunds();
+        principal -= amount;
+        asset.safeTransfer(msg.sender, amount);
+        emit Withdrawn(amount, principal);
+    }
+
+    /// @notice Post accrued interest: capitalise gross to principal, transfer WHT to bank if applicable, return net.
+    /// @dev WHT transferred to operator (= strategy address proxy here, simplified). Real impl uses tax-collection account.
+    function postInterest() external returns (uint256 netCredited) {
+        _accrueToNow();
+        uint256 gross = accruedInterest;
+        accruedInterest = 0;
+        uint256 wht = 0;
+        if (whtEnabled && gross > 0) {
+            wht = (gross * whtBps) / 10000;
+        }
+        netCredited = gross - wht;
+        principal += netCredited;
+        emit Posted(gross, wht, netCredited, uint64(block.timestamp));
+    }
+
+    /// @notice Read-only preview of accrual from `lastPostedAt` to `block.timestamp`, plus already-accrued.
+    function previewAccrual() external view returns (uint256) {
+        uint256 freshly = strategy.previewAccrual(principal, lastPostedAt, uint64(block.timestamp));
+        return accruedInterest + freshly;
+    }
+
+    function _accrueToNow() internal {
+        uint64 nowTs = uint64(block.timestamp);
+        if (nowTs <= lastPostedAt) return;
+        uint256 freshly = strategy.previewAccrual(principal, lastPostedAt, nowTs);
+        accruedInterest += freshly;
+        lastPostedAt = nowTs;
+    }
+}

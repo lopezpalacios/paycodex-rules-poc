@@ -1,0 +1,14 @@
+node_modules/
+artifacts/
+cache/
+dist/
+typechain-types/
+wasm/build/
+besu/data/
+.deployments/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+coverage.json

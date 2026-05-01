@@ -1,0 +1,21 @@
+{
+  "ruleId": "simple-act360-eur-350",
+  "description": "Plain-vanilla EUR demand deposit. 3.50% fixed, simple interest, act/360, daily accrual, monthly posting.",
+  "currency": "EUR",
+  "kind": "simple",
+  "dayCount": "act/360",
+  "ratePolicy": {
+    "type": "fixed",
+    "fixedBps": 350
+  },
+  "compounding": "none",
+  "postingFrequency": "monthly",
+  "withholding": {
+    "enabled": false,
+    "rateBps": 0,
+    "regime": "NONE"
+  },
+  "metadata": {
+    "kgRef": "paycodex/concepts/interest-calculation.md#simple"
+  }
+}

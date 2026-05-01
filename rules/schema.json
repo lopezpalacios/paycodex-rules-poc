@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://paycodex.dev/schemas/interest-rule.json",
+  "title": "Interest Rule",
+  "description": "Declarative interest mechanics for a deposit/loan instrument. Drives both WASM preview and Solidity strategy deployment.",
+  "type": "object",
+  "required": ["ruleId", "kind", "dayCount", "ratePolicy", "compounding", "postingFrequency"],
+  "properties": {
+    "ruleId": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]{3,64}$",
+      "description": "Stable ID, used as bytes32 key in RuleRegistry"
+    },
+    "description": { "type": "string" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "kind": {
+      "type": "string",
+      "enum": ["simple", "compound", "tiered", "floating", "kpi-linked", "two-track"]
+    },
+    "dayCount": {
+      "type": "string",
+      "enum": ["act/360", "act/365", "30/360", "act/act-isda"]
+    },
+    "ratePolicy": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["fixed", "reference-plus-spread", "tiered", "kpi-adjusted"]
+        },
+        "fixedBps": { "type": "integer", "minimum": -10000, "maximum": 10000 },
+        "referenceFeed": {
+          "type": "string",
+          "pattern": "^0x[a-fA-F0-9]{40}$",
+          "description": "Address of oracle returning current reference rate in bps"
+        },
+        "referenceName": { "type": "string", "description": "Human label, e.g. ESTR, SOFR" },
+        "spreadBps": { "type": "integer", "minimum": -10000, "maximum": 10000 },
+        "tiers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["upTo", "bps"],
+            "properties": {
+              "upTo": { "type": "string", "description": "Max balance for tier (decimal string, base units of asset, or 'max')" },
+              "bps": { "type": "integer", "minimum": -10000, "maximum": 10000 }
+            }
+          }
+        },
+        "kpiOracle": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+        "baseSpreadBps": { "type": "integer" },
+        "adjustmentRangeBps": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      }
+    },
+    "compounding": {
+      "type": "string",
+      "enum": ["none", "daily", "monthly", "continuous"]
+    },
+    "floorBps": { "type": "integer", "minimum": -10000, "maximum": 10000 },
+    "capBps": { "type": "integer", "minimum": -10000, "maximum": 10000 },
+    "postingFrequency": {
+      "type": "string",
+      "enum": ["daily", "monthly", "quarterly", "atRedemption"]
+    },
+    "withholding": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "rateBps": { "type": "integer", "minimum": 0, "maximum": 10000 },
+        "regime": { "type": "string", "enum": ["CH-VST", "EU-DAC2", "UK-GROSS", "NONE"] }
+      }
+    },
+    "twoTrack": {
+      "type": "object",
+      "description": "Split between hard interest (cash) and ECR (fee offset). Portions sum to 1.",
+      "properties": {
+        "ecrPortion": { "type": "number", "minimum": 0, "maximum": 1 },
+        "hardInterestPortion": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reserveRequirementBps": { "type": "integer", "minimum": 0, "maximum": 10000 }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

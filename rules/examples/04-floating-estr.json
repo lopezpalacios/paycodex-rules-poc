@@ -1,0 +1,19 @@
+{
+  "ruleId": "floating-estr-plus-50",
+  "description": "Wholesale floating EUR deposit. €STR + 50bps, daily reset, act/360, simple, monthly posting.",
+  "currency": "EUR",
+  "kind": "floating",
+  "dayCount": "act/360",
+  "ratePolicy": {
+    "type": "reference-plus-spread",
+    "referenceFeed": "0x0000000000000000000000000000000000000000",
+    "referenceName": "ESTR",
+    "spreadBps": 50
+  },
+  "compounding": "none",
+  "postingFrequency": "monthly",
+  "metadata": {
+    "kgRef": "paycodex/concepts/reference-rates.md",
+    "note": "referenceFeed populated at deploy time after MockRateOracle deployment"
+  }
+}
