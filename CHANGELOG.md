@@ -4,6 +4,21 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 7, 2026-05-01)
+- `scripts/gas-bench.ts` — per-strategy gas benchmarks: deployment + previewAccrual (estimated) + full deposit lifecycle (deposit/postInterest/withdraw)
+- Generates `RESULTS.md` with markdown table + data-derived notes (no hard-coded multipliers; comparisons computed from actual numbers)
+- `npm run bench` script
+- CI: gas-bench step runs after tests; `RESULTS.md` joins the gas-report artifact
+
+### Headline benchmark numbers (in-mem hardhat, paris target, optimizer=200)
+- Cheapest preview: `simple-act360-eur-350` — 22,889 gas
+- Most expensive preview: `tiered-corp-eur` — 29,741 gas (2 bands; +6,852 vs simple)
+- `compound` is only 1.16× `simple` (rpow is more efficient than expected)
+- `floating` / `kpi-linked` add ~5,500 gas vs `simple` for one external oracle CALL
+- `postInterest` average: 51,258 gas
+- Strategy deployment: 371k–534k gas range
+- `Deploy deposit` (factory): flat ~572k regardless of strategy
+
 ### Added (loop iter 6a, 2026-05-01)
 - **Web3signer integration — wallet-less issuance path** (no MetaMask required)
 - `besu/web3signer/` — config dir with `file-raw` keystore (PoC); README documents production swaps to HashiCorp Vault, AWS KMS, Azure Key Vault, YubiHSM

@@ -44,8 +44,12 @@ jobs:
       - name: Hardhat tests (unit + parity + revert + lifecycle)
         run: npm test
 
-      - name: Gas report
+      - name: Gas report (per-function via gas-reporter)
         run: REPORT_GAS=true npm test 2>&1 | tee gas-report.txt
+        continue-on-error: true
+
+      - name: Gas benchmarks (per-strategy lifecycle)
+        run: npm run bench
         continue-on-error: true
 
       - name: Solidity coverage
@@ -60,7 +64,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gas-report
-          path: gas-report.txt
+          path: |
+            gas-report.txt
+            RESULTS.md
           if-no-files-found: ignore
 
       - name: Upload coverage report

@@ -19,6 +19,8 @@
     "besu:logs": "docker compose -f besu/docker-compose.yml logs -f",
     "deploy": "hardhat run scripts/deploy.ts",
     "deploy:all": "hardhat run scripts/deploy-all.ts",
+    "bench": "hardhat run scripts/gas-bench.ts",
+    "server": "node scripts/server.mjs",
     "simulate": "node scripts/simulate.mjs",
     "compare": "hardhat run scripts/compare.ts",
     "ui": "vite ui",
