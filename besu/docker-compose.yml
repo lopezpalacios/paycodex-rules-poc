@@ -49,5 +49,31 @@ services:
       - --downstream-http-port=8545
       - --chain-id=1337
 
+  backend:
+    profiles: ["backend"]   # opt-in: `docker compose --profile backend up`
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: paycodex-backend
+    restart: unless-stopped
+    depends_on:
+      - besu
+      - web3signer
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: "3001"
+      NETWORK: "besu"
+      WEB3SIGNER_URL: "http://web3signer:9000"
+      PAYCODEX_BLOCKLIST: "/app/data/sanctions/blocklist.json"
+      # Secrets injected from .env or runtime — never bake into image
+      PAYCODEX_API_KEYS: "${PAYCODEX_API_KEYS:-}"
+      PAYCODEX_ADMIN_KEYS: "${PAYCODEX_ADMIN_KEYS:-}"
+      PAYCODEX_RATE_LIMIT_MAX: "${PAYCODEX_RATE_LIMIT_MAX:-5}"
+      PAYCODEX_RATE_LIMIT_WINDOW_MS: "${PAYCODEX_RATE_LIMIT_WINDOW_MS:-86400000}"
+      PAYCODEX_REQUIRE_INTENT: "${PAYCODEX_REQUIRE_INTENT:-false}"
+    volumes:
+      - ../.deployments:/app/.deployments:ro
+
 volumes:
   besu-data:

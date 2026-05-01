@@ -4,6 +4,24 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 37, 2026-05-02) — Dockerfile + backend compose service
+- New `Dockerfile` (multi-stage, alpine-based):
+  - Builder stage: `npm ci --legacy-peer-deps --omit=dev`, copies only what the runtime needs (scripts, data, .deployments)
+  - Runtime stage: non-root `paycodex` user, `NODE_ENV=production`, exposes 3001
+  - `HEALTHCHECK` hits `GET /api/health` (existing endpoint) every 30s — orchestrator gets liveness for free
+- New `.dockerignore` excludes `node_modules`, `artifacts`, `cache`, `coverage`, `test/`, `contracts/`, `wasm/build`, `ui/`, `besu/`, `firefly/`, `*.md`, hardhat deployments, and `.git` — keeps image lean
+- New `backend` service in `besu/docker-compose.yml`:
+  - **Profile-gated** (`docker compose --profile backend up`) so by default the chain runs alone (existing behavior preserved)
+  - `depends_on: [besu, web3signer]` — boots after the chain stack
+  - Mounts `.deployments/` read-only so the running container picks up new addresses without a rebuild
+  - All secrets/keys (`PAYCODEX_API_KEYS`, `PAYCODEX_ADMIN_KEYS`) come from env, never from the image — `${VAR:-default}` patterns mean missing values are explicit
+- One-command full stack now:
+  ```bash
+  PAYCODEX_API_KEYS="op:s3cret" PAYCODEX_ADMIN_KEYS="s3cret" \
+    docker compose -f besu/docker-compose.yml --profile backend up --build
+  ```
+  → Besu (8545) + Web3signer (9000) + paycodex backend (3001), all containerized, all healthchecked.
+
 ### Fixed (loop iter 36, 2026-05-02) — CI npm install was failing on peer dep mismatch
 - Root cause: `@nomicfoundation/hardhat-toolbox@5.0.0` declares a peer dep of `hardhat-gas-reporter@^1.0.8`, but we use `^2.2.0` (ESM-friendly upgrade). On dev machines, an older lockfile resolution allowed it; on a clean GitHub Actions runner with `npm ci`, npm 10's strict peer-dep resolver rejected the install.
 - Fix:
