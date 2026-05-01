@@ -4,6 +4,20 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 27, 2026-05-01) — SECURITY.md + healthcheck script
+- New `SECURITY.md`: responsible-disclosure policy, supported versions, severity-based response SLAs (24h/3d/5d/10d), in-scope vs out-of-scope, known and accepted PoC risks, disclosure timeline
+- Auditor contact: `jesus@lopezpalacios.com` with `[paycodex-rules-poc SECURITY]` subject prefix
+- New `scripts/healthcheck.sh`: runs every QA gate locally and prints a green/red summary
+  - 8 gates total: schema validation, solhint, WASM build, Solidity compile, hardhat tests, WASM tests, Foundry fuzz, Slither
+  - Optional gates (coverage, gas bench, UI build) in full mode; skipped under `--fast`
+  - Gracefully skips Foundry / Slither when not on PATH (so contributors without those installed still get useful output)
+  - Exit code 0/1 for use as pre-commit/pre-PR gate
+- New `npm run healthcheck` and `npm run healthcheck:fast` scripts
+- README quick-start now documents the healthcheck workflow
+
+### Verified locally
+8 of 8 gates pass (with Foundry + Slither installed). Without them: 6 of 8 pass + 2 skip. Either way: `healthcheck OK — safe to commit / open PR.`
+
 ### Changed (loop iter 26, 2026-05-01) — NatSpec on remaining 5 strategies + forge doc in CI
 - Full NatSpec on `CompoundDailyStrategy`, `TieredStrategy`, `FloatingStrategy`, `KpiLinkedStrategy`, `TwoTrackStrategy` — title, struct fields, constructor params, `@inheritdoc IInterestStrategy`, sentinel value docs, production-vs-PoC trade-offs called out
 - New `forge doc --build` step in CI `foundry-fuzz` job

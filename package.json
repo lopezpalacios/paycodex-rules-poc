@@ -16,6 +16,8 @@
     "coverage": "hardhat coverage",
     "wasm:test": "node wasm/tests/run.mjs",
     "qa": "npm run lint:sol && npm run validate:rules && npm run wasm:build && npm run wasm:test && npm run compile && npm test",
+    "healthcheck": "bash scripts/healthcheck.sh",
+    "healthcheck:fast": "bash scripts/healthcheck.sh --fast",
     "besu:up": "docker compose -f besu/docker-compose.yml up -d",
     "besu:down": "docker compose -f besu/docker-compose.yml down",
     "besu:logs": "docker compose -f besu/docker-compose.yml logs -f",

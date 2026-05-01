@@ -33,6 +33,10 @@ npm run wasm:build                                # asbuild → wasm/build/relea
 npm run compile                                   # hardhat compile
 npm test                                          # 39 hardhat tests · forge test → 15 fuzz × 256 runs · npm run wasm:test → 18 WASM
 
+# Pre-commit / pre-PR sanity check — runs every QA gate, prints green/red summary:
+npm run healthcheck                               # full (slow: includes coverage + bench + ui:build)
+npm run healthcheck:fast                          # fast (skips coverage/bench/ui:build)
+
 # Simulate any rule client-side (no chain needed):
 node scripts/simulate.mjs --rule rules/examples/08-ch-withholding.json --balance 1500000 --days 365
 
