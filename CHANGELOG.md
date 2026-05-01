@@ -4,6 +4,21 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed (loop iter 9, 2026-05-01)
+- **Native Hardhat tasks** replace the env-var workaround — proper CLI with `--rule`, `--balance`, `--days` flags and `--help` output
+- New `tasks/` dir with 6 tasks: `accounts`, `deploy:rule`, `deploy:all`, `compare:rule`, `bench`, `validate:rules`
+- Imported once from `hardhat.config.ts` via `import "./tasks";`
+- **Removed:** `scripts/deploy.ts`, `scripts/deploy-all.ts`, `scripts/compare.ts`, `scripts/gas-bench.ts`, `scripts/validate-rules.mjs` (logic moved into tasks)
+- **Kept:** `scripts/server.mjs` (Express backend, stays a Node script — not a Hardhat concern), `scripts/simulate.mjs` (CLI WASM, no chain)
+- npm scripts updated to call tasks: `validate:rules`, `deploy:all`, `bench`
+- CI: `RULE=path npx hardhat run scripts/deploy.ts` patterns replaced with `npx hardhat deploy:rule --rule path` everywhere
+- CI besu-e2e adds a new `compare:rule` step verifying parity on Besu after deploy
+- README rewritten with full CLI reference table
+
+### Removed env-var hacks
+Before: `RULE=rules/examples/01.json npx hardhat run scripts/deploy.ts --network besu`
+After:  `npx hardhat deploy:rule --rule rules/examples/01.json --network besu`
+
 ### Added (loop iter 8, 2026-05-01)
 - **Slither** static analysis wired in CI; SARIF → GitHub code-scanning + artifact
 - `slither.config.json` (solc remap, filter_paths for mocks/lib, exclude `timestamp` false-positive detector)

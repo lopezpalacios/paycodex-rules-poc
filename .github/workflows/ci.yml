@@ -62,7 +62,7 @@ jobs:
         run: npm run lint:sol
 
       - name: Validate rule JSON against schema
-        run: npm run validate:rules
+        run: npx hardhat validate:rules
 
       - name: Build WASM
         run: npm run wasm:build
@@ -153,8 +153,11 @@ jobs:
           echo "Besu failed to start"
           docker compose -f besu/docker-compose.yml logs --tail=50
           exit 1
-      - name: Deploy ALL 8 rules on Besu (single-process)
-        run: npx hardhat run scripts/deploy-all.ts --network besu
+      - name: Deploy ALL 8 rules on Besu
+        run: npx hardhat deploy:all --network besu
+
+      - name: Compare WASM ↔ chain for one rule
+        run: npx hardhat compare:rule --rule rules/examples/01-simple-act360.json --network besu
 
       - name: Upload deployment receipts
         if: success()

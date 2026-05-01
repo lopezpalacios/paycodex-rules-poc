@@ -1,6 +1,7 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-gas-reporter";
+import "./tasks";
 
 const config: HardhatUserConfig = {
   solidity: {

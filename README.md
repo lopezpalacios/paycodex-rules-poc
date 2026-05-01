@@ -31,27 +31,48 @@ Companion to [`paycodex`](../paycodex) (incumbent rails KG) and [`paycodex-oncha
 npm install
 npm run wasm:build                                # asbuild → wasm/build/release.wasm
 npm run compile                                   # hardhat compile
-npm test                                          # 20 tests: 12 unit + 8 parity (WASM ≡ Solidity)
+npm test                                          # 51 tests: 33 hardhat (12 unit + 8 parity + 10 revert + 3 lifecycle) + 18 WASM
 
 # Simulate any rule client-side (no chain needed):
 node scripts/simulate.mjs --rule rules/examples/08-ch-withholding.json --balance 1500000 --days 365
 
-# Deploy a rule on local Hardhat (hardhat node spins up automatically for `run`):
-RULE=rules/examples/01-simple-act360.json npx hardhat run scripts/deploy.ts --network hardhat
+# Hardhat custom tasks (run `npx hardhat` to list all):
+npx hardhat deploy:rule --rule rules/examples/01-simple-act360.json --network hardhat
+npx hardhat deploy:all --network hardhat
+npx hardhat compare:rule --rule rules/examples/01-simple-act360.json --balance 1000000 --days 360 --network hardhat
+npx hardhat bench                                 # writes RESULTS.md
+npx hardhat validate:rules                        # Ajv against schema
+npx hardhat accounts --network besu               # list signers
 
-# Spin up local Besu IBFT2, then deploy onto it:
+# Spin up local Besu IBFT2 + Web3signer, then deploy onto it:
 npm run besu:up
-RULE=rules/examples/04-floating-estr.json npx hardhat run scripts/deploy.ts --network besu
+npx hardhat deploy:all --network besu             # via hardhat-config'd dev key
+npx hardhat deploy:all --network besu-signer      # via Web3signer (no privkey in config)
 
-# Browser UI demo (live WASM preview):
-npm run ui
+# Backend server for wallet-less browser deploys (Web3signer signs):
+npm run server &
+npm run ui                                        # Vite + browser UI; pick "Backend (Web3signer, no wallet)" mode
 ```
 
-Verified results (this repo, 2026-05-01):
-- 12/12 strategy unit tests pass
-- 8/8 WASM-vs-Solidity parity tests pass (compound tolerance 0.1%, others 0.01%)
-- End-to-end deploy: strategy → registry register → factory → InterestBearingDeposit instance
-- WASM CLI simulate matches Solidity unit test fixtures (1M @ 3.50% × 90d act/360 = 8,750)
+### CLI reference
+
+| Task | What it does |
+|---|---|
+| `deploy:rule --rule <path>` | Deploy strategy + register + create deposit for one rule |
+| `deploy:all` | Reset deployments file + deploy core + 8 strategies + 8 deposits |
+| `compare:rule --rule <path> [--balance N] [--days N]` | Run WASM preview, query on-chain `previewAccrual`, assert parity |
+| `bench` | Run gas benchmarks for all 6 kinds, write `RESULTS.md` |
+| `validate:rules` | Ajv 2020 validate every `rules/examples/*.json` |
+| `accounts` | List `eth_accounts` and balances on the current network |
+
+### Verified results
+
+- 33 Hardhat tests + 18 WASM tests = 51 total, all green
+- Slither static analysis: 0 findings
+- Solidity coverage: ~92% lines
+- Real Besu IBFT2 deploy: all 8 rules registered + deposits created
+- Web3signer wallet-less path: same 8 rules deploy without any in-config privkey
+- WASM CLI matches Solidity unit fixtures (1M @ 3.50% × 90d act/360 = 8,750)
 
 ## Layout
 
