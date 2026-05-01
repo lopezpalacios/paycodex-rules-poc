@@ -4,6 +4,29 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 31, 2026-05-01) — InterestBearingPool (Pattern B, Aave-style index)
+- **Real architectural addition.** Multi-holder pooled deposit; many depositors share a single strategy contract. O(1) accrual per user — transfers don't trigger per-user math.
+- New `contracts/InterestBearingPool.sol` (~170 LOC, NatSpec'd):
+  - `liquidityIndex` (RAY = 1e27 scaling, Aave V2/V3 convention) — starts at 1.0, grows monotonically
+  - `scaledBalance[user]` = user's deposit ÷ index AT DEPOSIT TIME
+  - `balanceOf(user) = scaledBalance × liquidityIndex / RAY` (current claim including accrued interest)
+  - `previewIndex()` — read-only forecast of what `_updateIndex` would advance to
+  - `OpenZeppelin ReentrancyGuard` — `nonReentrant` on deposit/withdraw
+  - CEI ordering: state writes happen before any external call; mint deferred to caller
+- New `test/08-pool.test.ts` — 8 tests: constructor invariants, RAY init, two-depositor pro-rata accrual (alice+bob over 2 years), withdraw arithmetic, totalUnderlying matches sum-of-balances, zero-amount reverts, withdraw-past-balance, previewIndex parity vs post-update
+- Pool-level rate semantics documented: for `tiered`, the pool earns at the BLENDED rate for total balance (not per-user tiers). Single-holder `InterestBearingDeposit` is the right choice when per-user tier rates matter.
+- Tests: **54 hardhat** (was 46) + 18 wasm + 15 fuzz × 256 runs, all green
+- Slither: 0 findings maintained (CEI restructure + nonReentrant modifier + 4 inline suppression comments for false-positive `incorrect-equality` checks against zero)
+
+### Pool vs Deposit — when to pick which
+| Concern | InterestBearingDeposit (single) | InterestBearingPool (Pattern B) |
+|---|---|---|
+| Holders | 1 customer | many customers share |
+| Accrual cost per holder | per-deposit storage update on `postInterest` | O(1) — no per-user math on transfers |
+| Tier semantics | Per-user balance hits per-user tier | Pool's total balance hits the blended tier |
+| Best for | Premium private banking, large single deposits | Retail savings, broad pooled products |
+| Demonstrated | iter 16 (with WHT to TaxCollector) | this iter |
+
 ### Added (loop iter 29, 2026-05-01) — Wire step-up: parity + bench + UI
 - `test/03-parity.test.ts`: new entry `09-step-up-bond.json` — JS-side iterates the schedule and calls `wasm.previewSimple` per segment (mirrors `StepUpStrategy.previewAccrual` semantics on-chain). All 9 parity tests pass.
 - `tasks/bench.ts`: new `step-up` case with 3-step fixture (200/300/400 bps at +0/+90d/+180d). RESULTS.md regenerated:
