@@ -1,0 +1,50 @@
+meta {
+  name: POST /api/deploy-pool (Pattern B, multi-holder)
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/deploy-pool
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "ruleId": "{{ruleId}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: eq true
+  res.body.pool: isDefined
+  res.body.txHash: isDefined
+}
+
+docs {
+  Pattern B (multi-holder, Aave-style index) deployment. Same auth +
+  sanctions + rate-limit pipeline as deploy-deposit. The PoolFactory
+  must already be deployed (any prior `npx hardhat deploy:pool` does
+  this), and the rule must already be registered via deploy:rule.
+
+  Returns:
+  - ok: true
+  - issuer: Web3signer key address
+  - txHash, blockNumber, gasUsed
+  - pool: address of the new InterestBearingPool
+
+  When to choose pool over deposit:
+  - Many customers share a single strategy (retail savings)
+  - You want O(1) per-user accrual (no per-deposit storage updates)
+  - You're OK with blended-tier semantics for the `tiered` rule kind
+
+  Pool docs in contracts/InterestBearingPool.sol.
+}

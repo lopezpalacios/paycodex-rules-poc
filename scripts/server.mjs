@@ -58,6 +58,11 @@ const FACTORY_ABI = [
   "event DepositDeployed(bytes32 indexed ruleId, address indexed customer, address indexed deposit, address strategy)",
 ];
 
+const POOL_FACTORY_ABI = [
+  "function deploy(bytes32 ruleId, address asset) returns (address)",
+  "event PoolDeployed(bytes32 indexed ruleId, address indexed pool, address strategy)",
+];
+
 const STRATEGY_ABI = [
   "function previewAccrual(uint256 balance, uint64 fromTs, uint64 toTs) view returns (uint256)",
 ];
@@ -344,6 +349,72 @@ app.post("/api/deploy-deposit", requireAuth("admin"), async (req, res) => {
   }
 });
 
+// Pattern B: deploy a pooled (Aave-style index) instance instead of a single-holder deposit.
+// Same auth / sanctions / rate-limit pipeline as deploy-deposit. Customer field is informational
+// here — pools are multi-holder, so the rate-limit key is the deployer (issuer) for now.
+app.post("/api/deploy-pool", requireAuth("admin"), async (req, res) => {
+  try {
+    const { ruleId } = req.body;
+    if (!ruleId) return res.status(400).json({ error: "missing ruleId" });
+    const deps = loadDeployments();
+    if (!deps.PoolFactory || !deps.MockUSDC) {
+      return res.status(500).json({ error: "PoolFactory or MockUSDC missing — run `npx hardhat deploy:pool --rule …` once first" });
+    }
+    if (!deps[`Strategy_${ruleId}`]) {
+      return res.status(404).json({ error: `Strategy_${ruleId} not registered — deploy:rule first` });
+    }
+    const signer = await getSigner();
+    const issuerAddr = await signer.getAddress();
+
+    // Sanctions screen on the issuer (sanctioned operator → 451)
+    if (BLOCKLIST.has(String(issuerAddr).toLowerCase())) {
+      console.warn(`[server] BLOCKED deploy-pool: issuer ${issuerAddr} is sanctioned`);
+      return res.status(451).json({ error: `issuer address blocked: ${issuerAddr}` });
+    }
+
+    // Rate-limit on the issuer for pool deployments (pools are infrequent ops)
+    const rl = checkRateLimit(issuerAddr);
+    if (!rl.ok) {
+      res.setHeader("Retry-After", String(rl.retryAfterSec));
+      return res.status(429).json({
+        error: `rate limit exceeded for issuer ${issuerAddr}`,
+        max: RATE_LIMIT_MAX,
+        windowMs: RATE_LIMIT_WINDOW_MS,
+        retryAfterSec: rl.retryAfterSec,
+      });
+    }
+
+    const factory = new Contract(deps.PoolFactory, POOL_FACTORY_ABI, signer);
+    const tx = await factory.deploy(ruleIdToBytes32(ruleId), deps.MockUSDC, {
+      gasPrice: 1_000_000_000n,
+      type: 0,
+    });
+    const rcpt = await tx.wait();
+    let poolAddr = null;
+    for (const log of rcpt.logs) {
+      try {
+        const parsed = factory.interface.parseLog(log);
+        if (parsed?.name === "PoolDeployed") {
+          poolAddr = parsed.args.pool;
+          break;
+        }
+      } catch {}
+    }
+    res.json({
+      ok: true,
+      issuer: issuerAddr,
+      txHash: tx.hash,
+      blockNumber: rcpt.blockNumber,
+      gasUsed: rcpt.gasUsed.toString(),
+      pool: poolAddr,
+      authedAs: req.apiKeyName ?? null,
+      rateLimitSeen: rl.seen,
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Admin-only: hot-reload the blocklist without restarting the server
 app.post("/api/admin/reload-blocklist", requireAuth("admin"), (_req, res) => {
   const size = reloadBlocklist();
@@ -387,6 +458,7 @@ app.listen(PORT, () => {
   console.log(`  GET  /api/intent-schema                (any auth)`);
   console.log(`  POST /api/preview-onchain              (any auth)`);
   console.log(`  POST /api/deploy-deposit               (admin auth + sanctions + rate-limit + optional EIP-712 intent)`);
+  console.log(`  POST /api/deploy-pool                  (admin auth + sanctions + rate-limit, Pattern B pool)`);
   console.log(`  POST /api/admin/reload-blocklist       (admin auth)`);
   console.log(`  GET  /api/admin/rate-limit/:customer   (admin auth)`);
 });

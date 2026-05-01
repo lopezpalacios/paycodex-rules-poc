@@ -231,6 +231,7 @@ function enableChainButtons() {
   const ok = Object.keys(deployments).length > 0 && (currentMode() === "backend" || signer !== null);
   (document.getElementById("compare") as HTMLButtonElement).disabled = !ok;
   (document.getElementById("deploy") as HTMLButtonElement).disabled = !ok;
+  (document.getElementById("deploy-pool") as HTMLButtonElement).disabled = !ok;
 }
 
 // === Compare WASM vs on-chain ===
@@ -348,6 +349,33 @@ async function deployDeposit() {
   }
 }
 
+// === Deploy a new InterestBearingPool (Pattern B, multi-holder) ===
+
+async function deployPool() {
+  const out = document.getElementById("output") as HTMLDivElement;
+  try {
+    const ta = document.getElementById("ruleJson") as HTMLTextAreaElement;
+    const rule = JSON.parse(ta.value);
+
+    if (currentMode() === "backend") {
+      out.textContent = "submitting deploy-pool via backend (Web3signer signs)…";
+      const r = await fetch(`${BACKEND_URL}/api/deploy-pool`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ruleId: rule.ruleId }),
+      });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      out.textContent = `pool deployed at ${j.pool}\nissuer: ${j.issuer}\ntx: ${j.txHash}\ngas: ${j.gasUsed}\nblock: ${j.blockNumber}\n(Aave-style index, multi-holder; signed by Web3signer)`;
+      return;
+    }
+
+    out.textContent = "Deploy-pool from MetaMask not yet implemented in UI; use Backend mode or `npx hardhat deploy:pool`.";
+  } catch (e: any) {
+    out.textContent = `error: ${e.message}`;
+  }
+}
+
 // === Init ===
 
 async function init() {
@@ -364,6 +392,7 @@ async function init() {
   document.getElementById("connect-wallet")!.addEventListener("click", connect);
   document.getElementById("compare")!.addEventListener("click", compareWithChain);
   document.getElementById("deploy")!.addEventListener("click", deployDeposit);
+  document.getElementById("deploy-pool")!.addEventListener("click", deployPool);
 
   document.getElementById("run")!.addEventListener("click", () => {
     try {

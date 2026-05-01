@@ -4,6 +4,40 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 33, 2026-05-01) — Backend + UI wired for pool deployment
+- New endpoint `POST /api/deploy-pool` on `scripts/server.mjs`:
+  - Same auth (admin role required) + sanctions screen + rate-limit pipeline as `/api/deploy-deposit`
+  - Sanctions screen runs against the **issuer** address (since pools are multi-holder)
+  - Rate-limit keyed on issuer too — pools are infrequent ops; same window as deposits
+  - Returns `{ ok, issuer, txHash, blockNumber, gasUsed, pool, authedAs, rateLimitSeen }`
+- New `POOL_FACTORY_ABI` in server (function + event)
+- UI:
+  - `ui/index.html`: new `Deploy new pool` button next to existing `Deploy new deposit`
+  - `ui/app.ts`: new `deployPool()` handler — Backend mode POSTs to `/api/deploy-pool`; Wallet mode shows a stub "use Backend or `npx hardhat deploy:pool`" message (browser-side multisig flow deferred)
+  - `enableChainButtons()` toggles the new button along with the others
+- Bruno collection: new `10-deploy-pool.bru` request with `ruleId={{ruleId}}` body, asserts `200 + ok=true + pool defined`
+- Server startup banner now lists `/api/deploy-pool` alongside the other endpoints
+
+### Verified end-to-end on real Besu+Web3signer
+| Step | Result |
+|---|---|
+| `npx hardhat deploy:rule --rule 01-simple-act360.json --network besu-signer` | strategy + deposit deployed |
+| `npx hardhat deploy:pool --rule 01-simple-act360.json --network besu-signer` | pool deployed at `0x55602f2…`, gas ~580k |
+| `POST /api/deploy-pool` (admin auth) | second pool created at `0x3f314d3…`, gas 799,689 |
+| `httpStatus + body` | `200 ok=true viaSigner=true` |
+
+Pool deployment now reachable through every layer: contract · factory · Hardhat task · backend REST · Bruno collection · browser UI button.
+
+### Symmetry achieved across the full stack
+| Layer | Single-holder Deposit | Multi-holder Pool |
+|---|---|---|
+| Contract | `InterestBearingDeposit` | `InterestBearingPool` |
+| Factory | `DepositFactory` | `PoolFactory` |
+| Hardhat task | `deploy:rule` | `deploy:pool` |
+| Backend REST | `POST /api/deploy-deposit` | `POST /api/deploy-pool` |
+| Bruno request | `04-deploy-deposit.bru` | `10-deploy-pool.bru` |
+| UI button | "Deploy new deposit" | "Deploy new pool" |
+
 ### Added (loop iter 32, 2026-05-01) — PoolFactory + deploy:pool task
 - New `contracts/PoolFactory.sol` (~30 LOC) — mirror of `DepositFactory` for the Pattern B pool. Reads from the same `RuleRegistry`, so a single ruleId can be deployed in either shape (deposit OR pool, OR both).
 - New `tasks/deploy-pool.ts` Hardhat task: `npx hardhat deploy:pool --rule rules/examples/01-simple-act360.json --network besu-signer`. Auto-deploys `PoolFactory` on first invocation, then creates a pool per rule.
