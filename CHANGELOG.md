@@ -4,6 +4,26 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 38, 2026-05-02) — Self-hosted Mac Mini runner + ci-self-hosted workflow
+- **CI/CD verification**:
+  - iter 36 (sha 8868f7c) `npm ci --legacy-peer-deps` fix verified ✅ on hosted runners — `Slither`, `Foundry fuzz`, `Build+test`, `Besu IBFT2 e2e` all green for sha 764cee7 (iter 37)
+  - 4 of 8 Dependabot PRs pass (chai 4→6, assemblyscript 0.27→0.28, checkout 4→6, setup-python 5→6); 4 fail on major-version jumps (`upload-artifact 4→7`, `action-gh-release 2→3`, `hardhat-toolchain` 9-update group, `dev-tooling` 4-update group) — known breaking changes, parked for manual review
+- **Local runner setup on Mac Mini M2 Pro (arm64)**:
+  - Tried `act` (nektos/act 0.2.88) — works, but `catthehacker/ubuntu:act-latest` is amd64-only, so jobs run via QEMU x86_64 emulation. Slither's `setup-node` step alone took >1 minute (vs <5s on a hosted runner). Confirmed the workflow logic is correct, abandoned for speed.
+  - Switched to a **GitHub-registered self-hosted runner**: `mac-mini-runner-paycodex` (labels: `self-hosted, macOS, ARM64, paycodex`)
+  - Installed at `/Users/jesuslopez/ai-studio/scripts/actions-runner-paycodex-rules-poc/`, running as a launchd service alongside 4 pre-existing self-hosted runners on this Mac Mini
+  - Verified online via `gh api repos/.../actions/runners`
+- New `.github/workflows/ci-self-hosted.yml`:
+  - `runs-on: [self-hosted, paycodex]` — only the paycodex-labeled Mac Mini runner picks it up
+  - Fires on `pull_request` to main + `workflow_dispatch`
+  - `concurrency: cancel-in-progress: true` — superseded runs auto-cancel so the Mac Mini doesn't queue up
+  - Mirrors the hosted `build-test` job: lint, validate rules, WASM build, contracts compile, WASM tests, Hardhat tests
+  - Native arm64 execution = ~90s end-to-end (rough estimate vs ~3min on hosted ubuntu-latest)
+
+### Operator notes
+- **Hosted CI** stays the source of truth for merge gating (Slither, Foundry fuzz, Besu e2e need Linux + amd64 + the docker-compose stack)
+- **Self-hosted CI** is a fast pre-merge feedback loop on PRs — first arm64-native confirmation before paying for hosted minutes
+
 ### Added (loop iter 37, 2026-05-02) — Dockerfile + backend compose service
 - New `Dockerfile` (multi-stage, alpine-based):
   - Builder stage: `npm ci --legacy-peer-deps --omit=dev`, copies only what the runtime needs (scripts, data, .deployments)

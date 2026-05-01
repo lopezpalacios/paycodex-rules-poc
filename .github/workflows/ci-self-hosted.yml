@@ -1,0 +1,37 @@
+name: CI (self-hosted Mac Mini)
+
+# Mirrors the build-test job from ci.yml but runs natively on the
+# self-hosted Mac Mini runner (`labels: [self-hosted, paycodex]`).
+# Useful for pre-merge fast feedback — typical full run completes in
+# under 90s vs. ~3min on hosted ubuntu-latest.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: self-hosted-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast-build-test:
+    name: Fast build + test on Mac Mini
+    runs-on: [self-hosted, paycodex]
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --legacy-peer-deps
+      - run: npm run lint:sol
+      - run: npm run validate:rules
+      - run: npm run wasm:build
+      - run: npm run compile
+      - run: npm run wasm:test
+      - run: npm test
