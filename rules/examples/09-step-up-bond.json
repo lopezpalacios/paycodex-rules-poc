@@ -1,0 +1,21 @@
+{
+  "ruleId": "step-up-sustainability-bond",
+  "description": "Sustainability-linked bond. Coupon starts at 200bps; if the GHG-target KPI is not met by Jan 2027 it steps up to 300bps; if still not met by Jan 2028 it steps up to 400bps. Pre-bond-start period accrues zero. Real bonds use this shape with KPI verification triggering the step (not a fixed schedule); this rule encodes the post-trigger path.",
+  "currency": "EUR",
+  "kind": "step-up",
+  "dayCount": "act/360",
+  "ratePolicy": {
+    "type": "fixed",
+    "schedule": [
+      { "atTimestamp": 1735689600, "bps": 200 },
+      { "atTimestamp": 1798761600, "bps": 300 },
+      { "atTimestamp": 1830297600, "bps": 400 }
+    ]
+  },
+  "compounding": "none",
+  "postingFrequency": "quarterly",
+  "metadata": {
+    "kgRef": "paycodex-onchain/use-cases/README.md#070-sustainability-bond-with-coupon-step-up",
+    "note": "Timestamps: 2025-01-01, 2027-01-01, 2028-01-01 (UTC midnight)"
+  }
+}

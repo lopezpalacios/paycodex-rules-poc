@@ -118,6 +118,15 @@ async function deployStrategy(hre: any, rule: Rule, deps: Record<string, string>
       );
       await c.waitForDeployment(); return c;
     }
+    case "step-up": {
+      const schedule = rule.ratePolicy.schedule as Array<{ atTimestamp: number; bps: number }>;
+      const timestamps = schedule.map((s) => BigInt(s.atTimestamp));
+      const bpsList = schedule.map((s) => s.bps);
+      const c = await (await ethers.getContractFactory("StepUpStrategy")).deploy(
+        timestamps, bpsList, basis,
+      );
+      await c.waitForDeployment(); return c;
+    }
     default:
       throw new Error(`unknown kind ${rule.kind}`);
   }

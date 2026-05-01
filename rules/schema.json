@@ -15,7 +15,7 @@
     "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
     "kind": {
       "type": "string",
-      "enum": ["simple", "compound", "tiered", "floating", "kpi-linked", "two-track"]
+      "enum": ["simple", "compound", "tiered", "floating", "kpi-linked", "two-track", "step-up"]
     },
     "dayCount": {
       "type": "string",
@@ -55,6 +55,18 @@
           "items": { "type": "integer" },
           "minItems": 2,
           "maxItems": 2
+        },
+        "schedule": {
+          "type": "array",
+          "description": "Step-up schedule: ordered list of (atTimestamp, bps) entries, strictly ascending by timestamp",
+          "items": {
+            "type": "object",
+            "required": ["atTimestamp", "bps"],
+            "properties": {
+              "atTimestamp": { "type": "integer", "description": "Unix-second timestamp at which this step's rate becomes effective" },
+              "bps": { "type": "integer", "minimum": 0, "maximum": 10000 }
+            }
+          }
         }
       }
     },

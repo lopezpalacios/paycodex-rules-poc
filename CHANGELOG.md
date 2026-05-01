@@ -4,6 +4,28 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 28, 2026-05-01) — 9th rule kind: step-up coupon
+- **Real product feature** — first rule kind added since the initial 8. Step-up coupon: piecewise-constant interest rate that steps up (or down) at scheduled timestamps. Real-bank pattern for sustainability-linked bonds.
+- New `contracts/strategies/StepUpStrategy.sol` (~110 LOC) — schedule of `(atTimestamp, bps)` entries with strictly-ascending invariant; integrates each step's overlap with `[fromTs, toTs]` via `DayCount.daysAndDenominator`. Time before the first step accrues zero.
+- New `test/07-step-up.test.ts` — 6 tests:
+  - Constructor invariants (BadLength, NotSorted, RateTooHigh, duplicate timestamps)
+  - Two-step schedule integrates correctly across the boundary (fixture: 10d @ 200bps + 20d @ 300bps)
+  - Period before first step yields zero
+  - Last step extends to forever (360d @ 200bps × 1M = 20,000)
+  - kind/dayCount round-trip
+  - Monotonic in balance (2× balance ≈ 2× interest within rounding)
+- JSON Schema enum extended: `kind` now includes `"step-up"`; new `ratePolicy.schedule` array shape
+- New rule example `rules/examples/09-step-up-bond.json` — 3-step EUR sustainability bond (200 → 300 → 400 bps at Jan 2025/2027/2028)
+- `tasks/deploy-rule.ts` updated with new `step-up` case
+- Tests now: **45 hardhat** (was 39) + 18 wasm + 15 fuzz × 256 runs, all green
+- Slither: 0 findings maintained (StepUpStrategy uses `DayCount.daysAndDenominator` library to avoid the divide-before-multiply pattern flagged inline)
+
+### Deferred to a follow-up iter
+- WASM `previewStepUp` mirror in `wasm/assembly/index.ts` (would need AS array marshalling for the schedule)
+- `test/03-parity.test.ts` parity entry for step-up
+- `tasks/bench.ts` gas-bench entry
+- UI dropdown option in `ui/index.html`
+
 ### Added (loop iter 27, 2026-05-01) — SECURITY.md + healthcheck script
 - New `SECURITY.md`: responsible-disclosure policy, supported versions, severity-based response SLAs (24h/3d/5d/10d), in-scope vs out-of-scope, known and accepted PoC risks, disclosure timeline
 - Auditor contact: `jesus@lopezpalacios.com` with `[paycodex-rules-poc SECURITY]` subject prefix
