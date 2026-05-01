@@ -4,6 +4,19 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 5, 2026-05-01)
+- Browser UI rebuilt with on-chain query + deploy flow:
+  - MetaMask connect button; auto-detects network by chainId (hardhat/Besu)
+  - Loads `.deployments/<network>.json` to find pre-deployed strategies
+  - "Compare WASM ↔ Chain" button — calls `strategy.previewAccrual` and shows parity/diff
+  - "Deploy new deposit" button — submits `factory.deploy()` via wallet
+- New `scripts/deploy-all.ts` — single-process deploys core + all 8 strategies + registers + creates deposit per rule
+- `npm run deploy:all` script
+- `vite.config.ts` reworked: serves from project root for static asset access
+- `ethers` moved to dependencies (browser bundling)
+- CI: `npm run ui:build` + `ui-bundle` artifact; Besu E2E uses `deploy-all.ts`; `besu-deployments` artifact
+- Vite production build: 270KB / 99KB gzipped
+
 ### Added (loop iter 4, 2026-05-01)
 - Real Besu IBFT2 genesis generated via `besu operator generate-blockchain-config` (Docker)
 - New validator address `0xacfebbfffcc5da7cc2a42d5a075572132e5102a6` with matching key in `besu/key`
