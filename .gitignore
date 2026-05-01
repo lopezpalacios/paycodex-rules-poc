@@ -21,3 +21,8 @@ mutation_campaign/
 besu/backups/
 besu/multivalidator/networkFiles/
 besu/multivalidator/.env
+docs/src/
+docs/book/
+docs/book.css
+docs/book.toml
+docs/solidity.min.js

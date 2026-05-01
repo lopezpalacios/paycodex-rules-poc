@@ -73,6 +73,15 @@ jobs:
           name: forge-coverage
           path: lcov.info
           if-no-files-found: ignore
+      - name: Generate Solidity NatSpec docs (forge doc)
+        run: forge doc --build
+      - name: Upload Solidity docs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: solidity-docs
+          path: docs/src/
+          if-no-files-found: ignore
 
   build-test:
     name: Build + test (WASM + Solidity + parity)

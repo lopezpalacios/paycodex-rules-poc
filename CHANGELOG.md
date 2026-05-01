@@ -4,6 +4,22 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed (loop iter 26, 2026-05-01) — NatSpec on remaining 5 strategies + forge doc in CI
+- Full NatSpec on `CompoundDailyStrategy`, `TieredStrategy`, `FloatingStrategy`, `KpiLinkedStrategy`, `TwoTrackStrategy` — title, struct fields, constructor params, `@inheritdoc IInterestStrategy`, sentinel value docs, production-vs-PoC trade-offs called out
+- New `forge doc --build` step in CI `foundry-fuzz` job
+- New `solidity-docs` artifact uploaded per CI run (the mdbook source generated from NatSpec)
+- `.gitignore` extended for `docs/src/`, `docs/book/`, mdbook static assets
+- Tests: 39 hardhat + 18 wasm + 15 fuzz × 256 runs, all green
+- Slither: 0 findings maintained
+- Behavioural changes: zero — code unchanged, only NatSpec comments added
+
+### NatSpec coverage — final
+| Surface | Status |
+|---|---|
+| Top-level contracts (RuleRegistry, OperatorMultisig, InterestBearingDeposit, DepositFactory, TaxCollector) | ✅ |
+| All 6 strategies | ✅ |
+| All `interfaces/I*` | ✅ |
+
 ### Changed (loop iter 25, 2026-05-01) — NatSpec polish on public surfaces
 - Comprehensive `@notice` / `@dev` / `@param` / `@return` tags added to:
   - `RuleRegistry` (struct fields, all functions, all events, all errors documented)
