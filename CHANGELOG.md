@@ -4,6 +4,40 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 22, 2026-05-01) — Witness data backup + abandoned Besu version bump
+- New `besu/backup.sh` — snapshot/restore Besu volume:
+  - `bash besu/backup.sh` → tar.gz of the chain volume to `besu/backups/`, SHA256-tagged
+  - `bash besu/backup.sh --restore <archive>` → wipes + restores volume
+  - Env vars: `PAYCODEX_BACKUP_VOLUME` (default `besu_besu-data`), `PAYCODEX_BACKUP_DEST` (S3/GCS URI placeholder), `PAYCODEX_BACKUP_KMS` (KMS key placeholder)
+  - Production placeholders document the `aws s3 cp --sse aws:kms` and `gcloud storage cp` swaps
+- Verified end-to-end round-trip: snapshot → wipe volume → restore → canary file recovered byte-for-byte
+- Operator notes in script: 3-2-1 rule, hourly incremental + daily full, quarterly restore-to-sandbox drill
+- `.gitignore`: `besu/backups/`, `besu/multivalidator/networkFiles/`, `besu/multivalidator/.env`
+- DEPLOYMENT.md: "Witness data backup" `[ ]` → `[x]`
+
+### Abandoned: Besu 26.4.0 image bump
+- Tried `hyperledger/besu:26.4.0` to fix the iter-21 IBFT2 quorum flake
+- `besu operator generate-blockchain-config` regressed in 25.x+: rejects with `"Output directory already exists"` even when `--to=<path>` doesn't exist on host or container
+- Reproduced in clean `/tmp/besu-fresh/` with fresh mount → same error
+- Reverted to `hyperledger/besu:24.3.0` for both compose + regenerate.sh
+- Multi-validator IBFT2 quorum reliability remains a Besu-version-specific known issue (documented in `besu/multivalidator/README.md`); future fix path: separate non-validator bootnode + permissions-nodes config
+
+### Production hardening status — 11 fully closed (10), 1 partial, 1 process-only
+
+| Item | Status |
+|---|---|
+| Tax remittance (TaxCollector) | ✅ |
+| Backend auth (Bearer keys) | ✅ |
+| Sanctions screening | ✅ |
+| Operator multisig | ✅ |
+| Rate limiting | ✅ |
+| Customer authentication (signed intent) | ✅ |
+| Witness data backup | ✅ |
+| Multi-validator Besu | ⚠️ template ready, quorum needs Besu version follow-up |
+| mTLS on RPC | process / infra |
+| Gated CI status checks | process / GitHub config |
+| Incident response runbook | process / docs |
+
 ### Changed (loop iter 21, 2026-05-01) — Multi-validator peering: bootnode + discovery
 - `besu/multivalidator/docker-compose.yml`:
   - Validator-1 acts as the bootnode (no `--bootnodes` arg)
