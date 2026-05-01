@@ -4,6 +4,16 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Repo hardening (loop iter 43, 2026-05-02) — Round 2 Dependabot triage
+- After iter 42 closed/merged the first wave, Dependabot opened 4 new PRs from rebases against the bumped main:
+  - **Merged 3** (all 4 hosted CI checks green):
+    - #10 `actions/setup-node` 4 → 6
+    - #11 `github/codeql-action` 3 → 4
+    - #12 `crytic/slither-action` 0.4.0 → 0.4.2
+  - **Closed 1**: #13 dev-tooling group bumping `typescript` 5 → 6 + `@types/chai` 4 → 5 + `vite`. Build+test failed on the rebase.
+- **Extended `dependabot.yml` ignores**: `typescript` major, `@types/chai` major.
+- Cumulative session result: **8 of 13 Dependabot PRs merged, 5 closed with rationale, 0 open, 6 ignore rules in place.**
+
 ### Repo hardening (loop iter 42, 2026-05-02) — Dependabot ignores for breaking-change majors
 - **Closed 3 incompatible PRs** with rationale:
   - #1 `actions/upload-artifact` 4 → 7 — v7 defaults to single-file direct upload; we upload directories (`coverage/`, `dist/ui/`)

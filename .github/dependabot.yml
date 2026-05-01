@@ -43,6 +43,14 @@ updates:
       # we pin runtime to 20, so 20.x types are correct.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # TypeScript 6 changes module-resolution defaults; needs a deliberate
+      # tsconfig pass before we can pick it up.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      # @types/chai 5 tracks chai 5; we now run chai 6 but our tests still
+      # use the 4.x type surface. Track manually.
+      - dependency-name: "@types/chai"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
