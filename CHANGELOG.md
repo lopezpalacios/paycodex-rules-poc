@@ -4,6 +4,37 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 34, 2026-05-02) — `deploy:all --with-pools` + CI pool e2e
+- Extended `tasks/deploy-all.ts`:
+  - New `--with-pools` flag deploys an `InterestBearingPool` (Pattern B) for every rule alongside its `InterestBearingDeposit` (Pattern A)
+  - Auto-deploys `PoolFactory` if not already in `.deployments/<network>.json`
+  - Skips rules whose strategy failed earlier (graceful degradation)
+- Extended `.github/workflows/ci.yml` `besu-e2e` job:
+  - Now runs `deploy:all --with-pools` (was `deploy:all`)
+  - New verification step asserts `Pool_simple-act360-eur-350` is present in the deployments file and is a 0x40-hex address — fails the build if pool deployment regressed
+- Operator flow before iter 34: 18 separate CLI calls (9 deposits + 9 pools). After: **one** `deploy:all --with-pools` does both for all rules.
+
+### Verified locally (in-memory hardhat)
+```
+[deploy:all] network=hardhat withPools=true
+=== 01-simple-act360.json … 09-step-up-bond.json ===   (9 deposits)
+[deploy:all] --with-pools: deploying Pattern B pool for each rule
+  Pool_simple-act360-eur-350           → 0x33098148…
+  Pool_compound-daily-eur-300          → 0x6c615C76…
+  Pool_tiered-corp-eur                 → 0x04ED4ad3…
+  Pool_floating-estr-plus-50           → 0x972B2c69…
+  Pool_esg-kpi-linked                  → 0x06F22B54…
+  Pool_floor-cap-floating              → 0x3eEE123d…
+  Pool_two-track-ecr-50-50             → 0xeAb201b2…
+  Pool_ch-vst-savings                  → 0xD1b051c9…
+  Pool_step-up-sustainability-bond     → 0x61743CdF…
+```
+9 pools + 9 deposits in a single CLI invocation.
+
+### Notes
+- Pushed first time to GitHub: `git@github.com:lopezpalacios/paycodex-rules-poc.git` (public).
+- Companion knowledge graphs also pushed: `lopezpalacios/paycodex` and `lopezpalacios/paycodex-onchain`.
+
 ### Added (loop iter 33, 2026-05-01) — Backend + UI wired for pool deployment
 - New endpoint `POST /api/deploy-pool` on `scripts/server.mjs`:
   - Same auth (admin role required) + sanctions screen + rate-limit pipeline as `/api/deploy-deposit`

@@ -193,11 +193,21 @@ jobs:
           echo "Besu failed to start"
           docker compose -f besu/docker-compose.yml logs --tail=50
           exit 1
-      - name: Deploy ALL 8 rules on Besu
-        run: npx hardhat deploy:all --network besu
+      - name: Deploy ALL rules + pools on Besu
+        run: npx hardhat deploy:all --with-pools --network besu
 
       - name: Compare WASM ↔ chain for one rule
         run: npx hardhat compare:rule --rule rules/examples/01-simple-act360.json --network besu
+
+      - name: Verify pool was deployed for rule 01
+        run: |
+          POOL=$(jq -r '.["Pool_simple-act360-eur-350"]' .deployments/besu.json)
+          echo "Pool_simple-act360-eur-350 = $POOL"
+          if [ -z "$POOL" ] || [ "$POOL" = "null" ]; then
+            echo "::error::Pool was not deployed via --with-pools"
+            exit 1
+          fi
+          [[ "$POOL" =~ ^0x[0-9a-fA-F]{40}$ ]] || { echo "::error::Bad pool address: $POOL"; exit 1; }
 
       - name: Upload deployment receipts
         if: success()
