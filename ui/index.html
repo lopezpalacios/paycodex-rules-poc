@@ -36,8 +36,14 @@
   <p>Pick a rule, edit parameters, see WASM-computed accrual, and (with wallet) compare against the deployed Solidity strategy.</p>
 
   <div id="wallet-banner">
-    <span id="wallet-status">Wallet not connected.</span>
-    <button id="connect-wallet" class="secondary" style="float:right">Connect MetaMask</button>
+    <span id="wallet-status">— select mode below —</span>
+    <span style="float:right">
+      <select id="mode" style="width:auto;display:inline-block">
+        <option value="backend">Backend (Web3signer, no wallet)</option>
+        <option value="wallet">MetaMask wallet</option>
+      </select>
+      <button id="connect-wallet" class="secondary">Connect</button>
+    </span>
   </div>
 
   <div class="grid">

@@ -4,6 +4,24 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 6a, 2026-05-01)
+- **Web3signer integration — wallet-less issuance path** (no MetaMask required)
+- `besu/web3signer/` — config dir with `file-raw` keystore (PoC); README documents production swaps to HashiCorp Vault, AWS KMS, Azure Key Vault, YubiHSM
+- `docker-compose.yml` adds `web3signer` (consensys/web3signer:26.4.2) sidecar; loads keys from `./web3signer/keys/`, downstream-proxies to Besu, exposes port 9000
+- `hardhat.config.ts` adds `besu-signer` network — points at Web3signer URL, NO `accounts` array (signer holds keys)
+- New `scripts/server.mjs` — Express backend exposing:
+  - `GET /api/health` — Web3signer + Besu reachability + accounts
+  - `GET /api/deployments` — current network's `.deployments/<network>.json`
+  - `POST /api/preview-onchain` — runs `strategy.previewAccrual` via JSON-RPC
+  - `POST /api/deploy-deposit` — submits `factory.deploy(...)`, signed by Web3signer
+- Browser UI gets a mode dropdown: **Backend (Web3signer, no wallet)** or **MetaMask wallet**. Backend mode POSTs to `/api/*`; wallet mode unchanged.
+- `npm run server` script
+- `express` added to runtime dependencies
+- Verified locally on real Besu: all 8 rules deployed via `besu-signer` network (no privkey in hardhat config); backend deploy-deposit signed by Web3signer creates new InterestBearingDeposit at gas 572k, block 86
+
+### Why this matters
+Replaces "user signs in browser" with "bank backend signs via key-vault" — the actual issuance pattern banks use. Same code path supports HSM/KMS/Vault swaps with a 5-line config file change in `besu/web3signer/keys/`.
+
 ### Added (loop iter 5, 2026-05-01)
 - Browser UI rebuilt with on-chain query + deploy flow:
   - MetaMask connect button; auto-detects network by chainId (hardhat/Besu)

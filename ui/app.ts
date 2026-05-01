@@ -34,6 +34,12 @@ let signer: Signer | null = null;
 let deployments: Record<string, string> = {};
 let networkName = "?";
 
+const BACKEND_URL = (import.meta as any).env?.VITE_BACKEND_URL ?? "http://127.0.0.1:3001";
+
+function currentMode(): "backend" | "wallet" {
+  return ((document.getElementById("mode") as HTMLSelectElement)?.value as any) ?? "backend";
+}
+
 // === WASM loading ===
 
 async function loadWasm() {
@@ -137,15 +143,36 @@ function previewWasm(rule: any, balance: bigint, fromTs: bigint, toTs: bigint, o
   return { gross, net, ecr };
 }
 
-// === Wallet ===
+// === Connect (mode-aware) ===
 
-async function connectWallet() {
-  const eth = (window as any).ethereum;
+async function connect() {
   const banner = document.getElementById("wallet-banner")!;
   const statusEl = document.getElementById("wallet-status")!;
+  banner.className = "";
+  if (currentMode() === "backend") {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/health`);
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error ?? "backend not reachable");
+      networkName = j.network;
+      banner.classList.add("connected");
+      statusEl.textContent = `Backend OK: issuer=${j.accounts[0].slice(0, 8)}…${j.accounts[0].slice(-4)}, network=${j.network}, block=${j.blockNumber}`;
+      const dres = await fetch(`${BACKEND_URL}/api/deployments`);
+      const dj = await dres.json();
+      deployments = dj.deployments;
+      renderDeployments();
+      enableChainButtons();
+    } catch (e: any) {
+      banner.classList.add("error");
+      statusEl.textContent = `Backend connect failed: ${e.message}. Start with: npm run server`;
+    }
+    return;
+  }
+  // wallet mode
+  const eth = (window as any).ethereum;
   if (!eth) {
     banner.classList.add("error");
-    statusEl.textContent = "No window.ethereum — install MetaMask.";
+    statusEl.textContent = "No window.ethereum — install MetaMask or switch to Backend mode.";
     return;
   }
   try {
@@ -156,33 +183,37 @@ async function connectWallet() {
     const cid: string = await eth.request({ method: "eth_chainId" });
     networkName = NETWORK_BY_CHAINID[cid] ?? "?";
     banner.classList.add("connected");
-    statusEl.textContent = `Connected: ${addr.slice(0, 8)}…${addr.slice(-4)} on chainId=${parseInt(cid, 16)} (${networkName})`;
-    await loadDeployments();
+    statusEl.textContent = `Wallet: ${addr.slice(0, 8)}…${addr.slice(-4)} on chainId=${parseInt(cid, 16)} (${networkName})`;
+    await loadDeploymentsFromFile();
     enableChainButtons();
   } catch (e: any) {
     banner.classList.add("error");
-    statusEl.textContent = `Connection failed: ${e.message}`;
+    statusEl.textContent = `Wallet connect failed: ${e.message}`;
   }
 }
 
-async function loadDeployments() {
-  const out = document.getElementById("deployments")!;
+async function loadDeploymentsFromFile() {
   try {
     const res = await fetch(`../.deployments/${networkName}.json`);
     if (!res.ok) {
-      out.textContent = `No .deployments/${networkName}.json — run \`npm run deploy:all\` against this network first.`;
+      document.getElementById("deployments")!.textContent =
+        `No .deployments/${networkName}.json — run \`npm run deploy:all --network ${networkName}\` first.`;
       return;
     }
     deployments = await res.json();
-    const lines = Object.entries(deployments).map(([k, v]) => `  ${k.padEnd(40)} ${v}`);
-    out.textContent = `network: ${networkName}\n${lines.join("\n")}`;
+    renderDeployments();
   } catch (e: any) {
-    out.textContent = `Error loading deployments: ${e.message}`;
+    document.getElementById("deployments")!.textContent = `Error: ${e.message}`;
   }
 }
 
+function renderDeployments() {
+  const lines = Object.entries(deployments).map(([k, v]) => `  ${k.padEnd(40)} ${v}`);
+  document.getElementById("deployments")!.textContent = `network: ${networkName}\n${lines.join("\n")}`;
+}
+
 function enableChainButtons() {
-  const ok = signer !== null && Object.keys(deployments).length > 0;
+  const ok = Object.keys(deployments).length > 0 && (currentMode() === "backend" || signer !== null);
   (document.getElementById("compare") as HTMLButtonElement).disabled = !ok;
   (document.getElementById("deploy") as HTMLButtonElement).disabled = !ok;
 }
@@ -191,10 +222,6 @@ function enableChainButtons() {
 
 async function compareWithChain() {
   const out = document.getElementById("output") as HTMLDivElement;
-  if (!provider || !signer) {
-    out.textContent = "wallet not connected.";
-    return;
-  }
   try {
     const ta = document.getElementById("ruleJson") as HTMLTextAreaElement;
     const rule = JSON.parse(ta.value);
@@ -205,14 +232,28 @@ async function compareWithChain() {
     const fromTs = 1_700_000_000n;
     const toTs = fromTs + days * 86400n;
 
-    const stratAddr = deployments[`Strategy_${rule.ruleId}`];
-    if (!stratAddr) {
-      out.textContent = `No deployed strategy for ruleId ${rule.ruleId} on ${networkName}.\nRun \`npm run deploy:all --network ${networkName}\`.`;
-      return;
+    let onChainGross: bigint;
+    let stratAddr: string;
+    if (currentMode() === "backend") {
+      const r = await fetch(`${BACKEND_URL}/api/preview-onchain`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ruleId: rule.ruleId, balance: balance.toString(), fromTs: fromTs.toString(), toTs: toTs.toString() }),
+      });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      stratAddr = j.strategy;
+      onChainGross = BigInt(j.gross);
+    } else {
+      if (!signer) { out.textContent = "wallet not connected."; return; }
+      stratAddr = deployments[`Strategy_${rule.ruleId}`];
+      if (!stratAddr) {
+        out.textContent = `No deployed strategy for ruleId ${rule.ruleId}.`;
+        return;
+      }
+      const strat = new Contract(stratAddr, STRATEGY_ABI, signer);
+      onChainGross = await strat.previewAccrual(balance, fromTs, toTs);
     }
-
-    const strat = new Contract(stratAddr, STRATEGY_ABI, signer);
-    const onChainGross: bigint = await strat.previewAccrual(balance, fromTs, toTs);
 
     const wasmRes = previewWasm(rule, balance, fromTs, toTs, oracle, kpi);
     const diff = wasmRes.gross > onChainGross ? wasmRes.gross - onChainGross : onChainGross - wasmRes.gross;
@@ -222,6 +263,7 @@ async function compareWithChain() {
     const lines = [
       `rule:           ${rule.ruleId}`,
       `kind:           ${rule.kind}`,
+      `mode:           ${currentMode()}`,
       `network:        ${networkName}`,
       `strategy:       ${stratAddr}`,
       `balance:        ${balance}`,
@@ -235,7 +277,7 @@ async function compareWithChain() {
     if (wasmRes.ecr !== null) lines.push(`WASM ecr:       ${wasmRes.ecr}`);
     out.textContent = lines.join("\n");
   } catch (e: any) {
-    out.textContent = `error: ${e.message}\n${e.stack ?? ""}`;
+    out.textContent = `error: ${e.message}`;
   }
 }
 
@@ -243,27 +285,37 @@ async function compareWithChain() {
 
 async function deployDeposit() {
   const out = document.getElementById("output") as HTMLDivElement;
-  if (!provider || !signer) {
-    out.textContent = "wallet not connected.";
-    return;
-  }
   try {
     const ta = document.getElementById("ruleJson") as HTMLTextAreaElement;
     const rule = JSON.parse(ta.value);
+    const whtEnabled = !!rule.withholding?.enabled;
+    const whtBps = rule.withholding?.rateBps ?? 0;
+
+    if (currentMode() === "backend") {
+      out.textContent = "submitting deploy via backend (Web3signer signs)…";
+      const r = await fetch(`${BACKEND_URL}/api/deploy-deposit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ruleId: rule.ruleId, whtEnabled, whtBps }),
+      });
+      const j = await r.json();
+      if (j.error) throw new Error(j.error);
+      out.textContent = `deposit deployed at ${j.deposit}\nissuer: ${j.issuer}\ncustomer: ${j.customer}\ntx: ${j.txHash}\ngas: ${j.gasUsed}\nblock: ${j.blockNumber}\n(signed by Web3signer — no wallet involved)`;
+      return;
+    }
+
+    if (!signer) { out.textContent = "wallet not connected."; return; }
     const factoryAddr = deployments["DepositFactory"];
     const usdcAddr = deployments["MockUSDC"];
     if (!factoryAddr || !usdcAddr) {
-      out.textContent = "DepositFactory or MockUSDC missing in deployments file.";
+      out.textContent = "DepositFactory or MockUSDC missing.";
       return;
     }
     const factory = new Contract(factoryAddr, FACTORY_ABI, signer);
     const ruleIdB32 = ruleIdToBytes32(rule.ruleId);
-    const whtEnabled = !!rule.withholding?.enabled;
-    const whtBps = rule.withholding?.rateBps ?? 0;
     const customer = await signer.getAddress();
     out.textContent = "submitting deploy tx — confirm in MetaMask…";
     const tx = await factory.deploy(ruleIdB32, usdcAddr, customer, whtEnabled, whtBps);
-    out.textContent = `tx submitted: ${tx.hash}\nwaiting for confirmation…`;
     const rcpt = await tx.wait();
     let depositAddr = "?";
     for (const log of rcpt!.logs) {
@@ -294,7 +346,7 @@ async function init() {
   sel.addEventListener("change", refresh);
   await refresh();
 
-  document.getElementById("connect-wallet")!.addEventListener("click", connectWallet);
+  document.getElementById("connect-wallet")!.addEventListener("click", connect);
   document.getElementById("compare")!.addEventListener("click", compareWithChain);
   document.getElementById("deploy")!.addEventListener("click", deployDeposit);
 

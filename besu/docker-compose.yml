@@ -28,5 +28,26 @@ services:
       - --min-gas-price=0
       - --logging=INFO
 
+  web3signer:
+    image: consensys/web3signer:26.4.2
+    container_name: paycodex-web3signer
+    restart: unless-stopped
+    depends_on:
+      - besu
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./web3signer/keys:/keys:ro
+    command:
+      - --key-store-path=/keys
+      - --http-listen-host=0.0.0.0
+      - --http-listen-port=9000
+      - --http-cors-origins=all
+      - --http-host-allowlist=*
+      - eth1
+      - --downstream-http-host=besu
+      - --downstream-http-port=8545
+      - --chain-id=1337
+
 volumes:
   besu-data:

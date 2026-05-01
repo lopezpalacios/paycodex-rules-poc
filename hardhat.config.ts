@@ -24,6 +24,14 @@ const config: HardhatUserConfig = {
       // Use 1 gwei type-0 (legacy) transactions to keep cost trivial but above floor.
       gasPrice: 1_000_000_000,
     },
+    "besu-signer": {
+      // Routes JSON-RPC through Web3signer (which signs eth_sendTransaction
+      // using the keys it has loaded, then forwards to Besu). NO accounts here —
+      // Hardhat queries the node for accounts; Web3signer reports its loaded keys.
+      url: process.env.WEB3SIGNER_RPC ?? "http://127.0.0.1:9000",
+      chainId: 1337,
+      gasPrice: 1_000_000_000,
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS === "true",
