@@ -1,14 +1,21 @@
 services:
-  besu-1: &besu_template
+  besu-1:
     image: hyperledger/besu:24.3.0
+    container_name: paycodex-besu-1
     restart: unless-stopped
     user: root
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.11
+    ports:
+      - "8545:8545"
+      - "8546:8546"
     volumes:
       - ./genesis.json:/config/genesis.json:ro
       - ./keys/validator-1/key:/config/key:ro
       - ./static-nodes.json:/config/static-nodes.json:ro
       - besu-1-data:/data
-    command: &cmd
+    command:
       - --data-path=/data
       - --genesis-file=/config/genesis.json
       - --node-private-key-file=/config/key
@@ -21,58 +28,103 @@ services:
       - --rpc-ws-enabled
       - --rpc-ws-host=0.0.0.0
       - --rpc-ws-port=8546
-      - --p2p-host=0.0.0.0
+      - --p2p-host=172.30.30.11
       - --p2p-port=30303
       - --host-allowlist=*
-      - --discovery-enabled=false
+      - --discovery-enabled=true
       - --min-gas-price=0
       - --logging=INFO
-    container_name: paycodex-besu-1
+
+  besu-2: &besu_follower
+    image: hyperledger/besu:24.3.0
+    container_name: paycodex-besu-2
+    restart: unless-stopped
+    user: root
+    depends_on:
+      - besu-1
     networks:
       paycodex-net:
-        ipv4_address: 172.30.30.11
-    ports:
-      - "8545:8545"
-      - "8546:8546"
-
-  besu-2:
-    <<: *besu_template
-    container_name: paycodex-besu-2
+        ipv4_address: 172.30.30.12
     volumes:
       - ./genesis.json:/config/genesis.json:ro
       - ./keys/validator-2/key:/config/key:ro
       - ./static-nodes.json:/config/static-nodes.json:ro
       - besu-2-data:/data
-    networks:
-      paycodex-net:
-        ipv4_address: 172.30.30.12
-    ports: []
+    command:
+      - --data-path=/data
+      - --genesis-file=/config/genesis.json
+      - --node-private-key-file=/config/key
+      - --static-nodes-file=/config/static-nodes.json
+      - --bootnodes=${BOOTNODE_ENODE}
+      - --rpc-http-enabled
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN,DEBUG,TXPOOL
+      - --p2p-host=172.30.30.12
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --discovery-enabled=true
+      - --min-gas-price=0
+      - --logging=INFO
 
   besu-3:
-    <<: *besu_template
+    <<: *besu_follower
     container_name: paycodex-besu-3
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.13
     volumes:
       - ./genesis.json:/config/genesis.json:ro
       - ./keys/validator-3/key:/config/key:ro
       - ./static-nodes.json:/config/static-nodes.json:ro
       - besu-3-data:/data
-    networks:
-      paycodex-net:
-        ipv4_address: 172.30.30.13
-    ports: []
+    command:
+      - --data-path=/data
+      - --genesis-file=/config/genesis.json
+      - --node-private-key-file=/config/key
+      - --static-nodes-file=/config/static-nodes.json
+      - --bootnodes=${BOOTNODE_ENODE}
+      - --rpc-http-enabled
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN,DEBUG,TXPOOL
+      - --p2p-host=172.30.30.13
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --discovery-enabled=true
+      - --min-gas-price=0
+      - --logging=INFO
 
   besu-4:
-    <<: *besu_template
+    <<: *besu_follower
     container_name: paycodex-besu-4
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.14
     volumes:
       - ./genesis.json:/config/genesis.json:ro
       - ./keys/validator-4/key:/config/key:ro
       - ./static-nodes.json:/config/static-nodes.json:ro
       - besu-4-data:/data
-    networks:
-      paycodex-net:
-        ipv4_address: 172.30.30.14
-    ports: []
+    command:
+      - --data-path=/data
+      - --genesis-file=/config/genesis.json
+      - --node-private-key-file=/config/key
+      - --static-nodes-file=/config/static-nodes.json
+      - --bootnodes=${BOOTNODE_ENODE}
+      - --rpc-http-enabled
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN,DEBUG,TXPOOL
+      - --p2p-host=172.30.30.14
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --discovery-enabled=true
+      - --min-gas-price=0
+      - --logging=INFO
 
   web3signer:
     image: consensys/web3signer:26.4.2

@@ -105,26 +105,50 @@ Stop a second validator and block production halts — that's IBFT2 working as d
 | Web3signer points at single besu-1 | LB across all 4 RPC endpoints with health checks |
 | Validator keys live in `keys/` | HSM / KMS / Vault per node |
 
-## Status: configuration ready, peering needs operator tuning
+## Status: configuration + bootnode shipped, IBFT quorum needs Besu version tuning
 
 This iter ships:
 - ✅ 4-validator genesis generator (`regenerate.sh`)
 - ✅ Compose with 4 Besu services + static IPs (172.30.30.11..14) + Web3signer
 - ✅ Per-validator key directories with addresses
 - ✅ `static-nodes.json` with IP-based enode URLs (Besu rejects DNS hostnames)
+- ✅ `.env` with `BOOTNODE_ENODE` for compose interpolation
+- ✅ Validator-1 acts as bootnode; validators 2-4 use `--bootnodes=$BOOTNODE_ENODE`
+- ✅ Discovery enabled across all 4 nodes
 - ✅ All 4 containers boot under Besu 24.3.0
-- ⚠️ Peering is **intermittent** with `--discovery-enabled=false` + `static-nodes.json`. Each Besu validates incoming peer identities aggressively; static-only peering can fail to reach the `2F+1 = 3` quorum needed for IBFT2 round 0 commits. Symptoms: `net_peerCount` flickers 0–2, `admin_peers` empty, block 0 frozen.
+- ✅ `net_peerCount` reaches 2-3 transiently
+- ⚠️ IBFT2 round-0 quorum (3-of-4) does not lock in reliably under Besu 24.3.0 with this networking. Peers are seen briefly then dropped; "Currently checking N peers for usefulness" oscillates between 0 and 3. Block 0 stays frozen.
 
-### What to fix in the next iter or production
+This is consistent with several reported issues in Besu 24.x around static-nodes + bootnodes interaction. Production teams typically resolve this by:
 
-| Problem | Fix |
+| Path | What it fixes |
 |---|---|
-| Static-nodes only sometimes connects | Enable bootnode + discovery: `--bootnodes=enode://...@172.30.30.11:30303` on validators 2-4, drop `--discovery-enabled=false` on all |
-| Containers race-start | Add `depends_on:` `service_started` chains so besu-2/3/4 wait for besu-1 |
-| Peer-identity rejection | Pre-share `permissions_nodes_config.toml` with all 4 enodes; pass `--permissions-nodes-config-file-enabled` |
-| AZ partition tolerance in real deployment | Bootnode + discovery + a permanent overlay (e.g. WireGuard) between regions |
+| Upgrade to Besu **24.10+** (newer P2P stack, improved bond stability) | Most reports of "checking N peers" oscillation resolved |
+| Pre-share **`permissions_nodes_config.toml`** with all 4 enodes + `--permissions-nodes-config-file-enabled` | Pins peer identity, blocks unsolicited inbound, halts the connect/disconnect cycle |
+| Use a **separate bootnode** (non-validator) for discovery | Validators stay focused on consensus; bootnode does discovery |
+| Use **mTLS for P2P** in real deployments | Makes peer identity unforgeable + fixes flaky bonds |
 
-The single-node `besu/` setup remains the per-PR E2E target. This 4-node stack is the **architecture template** for production deployments; full local boot verification is deferred to ops once bootnode + permissions-nodes are wired (estimated half-day of follow-up work).
+### Run procedure (when peering is working)
+
+```bash
+# 1. Generate fresh keys + genesis + .env
+bash besu/multivalidator/regenerate.sh
+
+# 2. Wire validator-1 key into Web3signer
+ADDR=$(cat besu/multivalidator/keys/validator-1/address)
+KEY=$(cat besu/multivalidator/keys/validator-1/key)
+cat > "besu/multivalidator/web3signer/keys/${ADDR}.yaml" <<EOF
+type: "file-raw"
+keyType: "SECP256K1"
+privateKey: "${KEY}"
+EOF
+
+# 3. Boot — note: --env-file is required because compose looks for .env in CWD
+docker compose --env-file besu/multivalidator/.env \
+               -f besu/multivalidator/docker-compose.yml up -d
+```
+
+The single-node `besu/` setup remains the per-PR E2E target. The 4-node stack is the **architecture template** for production deployments; reaching IBFT2 quorum reliably is a half-day operator task on a newer Besu release.
 
 ## See also
 

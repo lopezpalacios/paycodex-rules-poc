@@ -56,10 +56,10 @@ g["alloc"] = {
 with open("$OUT/genesis.json", "w") as f: json.dump(g, f, indent=2); f.write("\n")
 PY
 
-# 4. Build static-nodes.json — list of enode URLs for cross-peering.
-#    Besu rejects DNS hostnames in static-nodes.json (must be literal IPs).
+# 4. Build static-nodes.json + bootnode .env file.
 #    docker-compose.yml assigns 172.30.30.11..14 to validators 1..4.
-#    The pubkey from key.pub is the node ID (64 bytes, hex-encoded).
+#    Validator-1 acts as the bootnode; validators 2..4 connect via --bootnodes.
+#    Discovery is ENABLED in compose for resilient peering.
 python3 <<'PY'
 import json, os
 from pathlib import Path
@@ -71,6 +71,7 @@ for i in range(1, 5):
         pub = pub[2:]
     nodes.append(f"enode://{pub}@172.30.30.{10+i}:30303")
 (out / "static-nodes.json").write_text(json.dumps(nodes, indent=2) + "\n")
+(out / ".env").write_text(f"BOOTNODE_ENODE={nodes[0]}\n")
 PY
 
 # 5. Cleanup intermediate files

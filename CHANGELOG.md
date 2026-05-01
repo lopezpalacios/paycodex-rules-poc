@@ -4,6 +4,20 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed (loop iter 21, 2026-05-01) — Multi-validator peering: bootnode + discovery
+- `besu/multivalidator/docker-compose.yml`:
+  - Validator-1 acts as the bootnode (no `--bootnodes` arg)
+  - Validators 2-4 use `--bootnodes=${BOOTNODE_ENODE}` (interpolated from `.env`)
+  - `--discovery-enabled=true` on all 4 nodes (was disabled in iter 20)
+  - `--p2p-host=172.30.30.1{1..4}` on each node so each advertises its bound IP correctly
+  - `depends_on: [besu-1]` on followers so the bootnode is up before they query
+- `besu/multivalidator/regenerate.sh`:
+  - Now writes `besu/multivalidator/.env` with the bootnode enode URL alongside `static-nodes.json`
+  - Compose users invoke with `docker compose --env-file besu/multivalidator/.env -f .../docker-compose.yml up -d`
+- Verified: all 4 boot, peer count reaches 2-3 transiently, peer discovery operational
+- ⚠️ Still flaky: IBFT2 round-0 quorum doesn't lock in reliably under Besu 24.3.0. README documents the version-upgrade + permissions-nodes fix path honestly.
+- The single-validator `besu/` stack remains the per-PR E2E target.
+
 ### Added (loop iter 20, 2026-05-01) — 4-validator Besu IBFT2 (template)
 - New `besu/multivalidator/` directory:
   - `regenerate.sh` — single-command 4-node genesis + key generation via `besu operator generate-blockchain-config --count=4`
