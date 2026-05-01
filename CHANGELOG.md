@@ -4,6 +4,14 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 40, 2026-05-02) — Hosted CI concurrency control + Foundry cache
+- All 4 workflows now have `concurrency:` blocks with carefully chosen semantics:
+  - `ci.yml`: `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` — PR pushes supersede prior PR runs (saves CI minutes), but `main` pushes always run to completion (we want the deployment trail intact)
+  - `ci-self-hosted.yml`: `cancel-in-progress: true` — Mac Mini has limited concurrency, latest commit wins
+  - `release.yml`: `cancel-in-progress: false` — never interrupt a release in flight
+  - `mutation.yml`: `cancel-in-progress: true` — nightly cron, only the latest run matters
+- `foundry-toolchain@v1`: added `cache: true` so the `foundryup`-installed binaries are cached between runs (saves ~30s per Foundry job on warm CI)
+
 ### Fixed (loop iter 39, 2026-05-02) — Foundry install 403 flake on hosted runners
 - Hosted CI iter 38 (sha 5a49d21) initially failed because `foundryup` got `curl 403` from the unauthenticated GitHub API. Rerun passed cleanly — pure infra flake, not a code regression.
 - Hardened: pass `GITHUB_TOKEN` env to `foundry-rs/foundry-toolchain@v1` so its curl/`gh` calls authenticate and stop hitting anonymous rate limits.

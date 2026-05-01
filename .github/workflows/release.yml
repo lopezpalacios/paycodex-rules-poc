@@ -13,6 +13,10 @@ on:
 permissions:
   contents: write   # for creating releases
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false   # never cancel mid-release
+
 jobs:
   build-and-release:
     name: Build artifacts + create GitHub Release

@@ -9,6 +9,10 @@ permissions:
   contents: read
   issues: write   # to file an issue if mutation score regresses
 
+concurrency:
+  group: mutation-${{ github.ref }}
+  cancel-in-progress: true   # nightly cron: only the latest run matters
+
 jobs:
   mutate:
     name: slither-mutate over strategies

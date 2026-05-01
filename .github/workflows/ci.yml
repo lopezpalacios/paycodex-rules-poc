@@ -11,6 +11,10 @@ permissions:
   contents: read
   security-events: write   # for SARIF upload from Slither
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   slither:
     name: Slither static analysis
@@ -57,6 +61,7 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
         with:
           version: stable
+          cache: true
         env:
           # Avoid 403 rate-limits on foundryup's unauthenticated GitHub API calls
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
