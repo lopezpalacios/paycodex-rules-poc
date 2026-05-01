@@ -46,6 +46,14 @@ async function deployStrategy(hre: any, kind: string): Promise<{ contract: any; 
     case "two-track":
       f = await ethers.getContractFactory("TwoTrackStrategy");
       c = await f.deploy(350, 5000, 5000, 1000, 0); break;
+    case "step-up": {
+      // 3-step schedule: 200bps from FROM_TS, 300bps from FROM_TS+90d, 400bps from FROM_TS+180d
+      const ts0 = FROM_TS;
+      const ts1 = ts0 + 90n * SECONDS_PER_DAY;
+      const ts2 = ts0 + 180n * SECONDS_PER_DAY;
+      f = await ethers.getContractFactory("StepUpStrategy");
+      c = await f.deploy([ts0, ts1, ts2], [200n, 300n, 400n], 0); break;
+    }
     default:
       throw new Error(`unknown kind ${kind}`);
   }
@@ -155,7 +163,7 @@ function renderResultsMd(rows: Row[]): string {
   return out.join("\n") + "\n";
 }
 
-task("bench", "Run gas benchmarks for all 6 strategy kinds and write RESULTS.md")
+task("bench", "Run gas benchmarks for all 7 strategy kinds and write RESULTS.md")
   .setAction(async (_args, hre: any) => {
     console.log(`[bench] starting on ${hre.network.name}...\n`);
     const cases = [
@@ -165,6 +173,7 @@ task("bench", "Run gas benchmarks for all 6 strategy kinds and write RESULTS.md"
       { rule: "floating-estr-plus-50", kind: "floating" },
       { rule: "esg-kpi-linked", kind: "kpi-linked" },
       { rule: "two-track-ecr-50-50", kind: "two-track" },
+      { rule: "step-up-bond", kind: "step-up" },
     ];
     const rows: Row[] = [];
     for (const c of cases) {

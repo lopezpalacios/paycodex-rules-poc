@@ -126,6 +126,21 @@ function previewWasm(rule: any, balance: bigint, fromTs: bigint, toTs: bigint, o
       );
       break;
     }
+    case "step-up": {
+      // Iterate the schedule and call previewSimple per segment (matches StepUpStrategy.previewAccrual)
+      const steps = rule.ratePolicy.schedule as Array<{ atTimestamp: number; bps: number }>;
+      let sum = 0n;
+      for (let i = 0; i < steps.length; i++) {
+        const stepStart = BigInt(steps[i].atTimestamp);
+        const stepEnd = i + 1 < steps.length ? BigInt(steps[i + 1].atTimestamp) : 0xffffffffffffffffn;
+        const subFrom = fromTs > stepStart ? fromTs : stepStart;
+        const subTo = toTs < stepEnd ? toTs : stepEnd;
+        if (subFrom >= subTo) continue;
+        sum += wasm.previewSimple(balance, steps[i].bps, basis, subFrom, subTo);
+      }
+      gross = sum;
+      break;
+    }
     case "two-track": {
       const hardBps = Math.round((rule.twoTrack.hardInterestPortion ?? 0) * 10_000);
       const ecrBps = Math.round((rule.twoTrack.ecrPortion ?? 0) * 10_000);

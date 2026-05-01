@@ -4,6 +4,41 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 29, 2026-05-01) — Wire step-up: parity + bench + UI
+- `test/03-parity.test.ts`: new entry `09-step-up-bond.json` — JS-side iterates the schedule and calls `wasm.previewSimple` per segment (mirrors `StepUpStrategy.previewAccrual` semantics on-chain). All 9 parity tests pass.
+- `tasks/bench.ts`: new `step-up` case with 3-step fixture (200/300/400 bps at +0/+90d/+180d). RESULTS.md regenerated:
+
+| Strategy | previewAccrual | postInterest |
+|---|---:|---:|
+| simple | 22,889 | 60,816 |
+| compound | 26,557 | 63,751 |
+| tiered | 29,752 | 66,307 |
+| floating | 28,343 | 65,180 |
+| kpi-linked | 28,368 | 65,200 |
+| two-track | 22,980 | 60,889 |
+| **step-up** | **42,742** | **71,843** |
+
+step-up is the most expensive preview at 1.87× simple — explained by the schedule loop with 3 entries, each calling `DayCount.daysAndDenominator` and computing a contribution.
+
+- `ui/index.html`: dropdown option `09 — Step-up sustainability bond`
+- `ui/app.ts`: case `step-up` in `previewWasm` — JS-side iteration calling WASM `previewSimple` per segment (matches the parity test's pattern)
+- 46 Hardhat tests (was 45) + 18 WASM + 15 fuzz × 256 runs, all green
+- Slither: 0 findings maintained
+- UI bundle build: 271KB / 99.8KB gzipped
+
+### All 9 rule kinds now plumbed end-to-end
+| Rule | Solidity | WASM | Schema | Example | Parity test | Bench | UI dropdown |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| simple | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| compound | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| tiered | ✅ | ✅ via JS-loop | ✅ | ✅ | ✅ | ✅ | ✅ |
+| floating | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| kpi-linked | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| floor-cap | ✅ via floating | — | ✅ | ✅ | ✅ via floating | ✅ via floating | ✅ |
+| two-track | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ch-withholding | ✅ via simple | ✅ | ✅ | ✅ | ✅ | ✅ via simple | ✅ |
+| **step-up** | **✅** | **✅ via JS-loop** | **✅** | **✅** | **✅** | **✅** | **✅** |
+
 ### Added (loop iter 28, 2026-05-01) — 9th rule kind: step-up coupon
 - **Real product feature** — first rule kind added since the initial 8. Step-up coupon: piecewise-constant interest rate that steps up (or down) at scheduled timestamps. Real-bank pattern for sustainability-linked bonds.
 - New `contracts/strategies/StepUpStrategy.sol` (~110 LOC) — schedule of `(atTimestamp, bps)` entries with strictly-ascending invariant; integrates each step's overlap with `[fromTs, toTs]` via `DayCount.daysAndDenominator`. Time before the first step accrues zero.

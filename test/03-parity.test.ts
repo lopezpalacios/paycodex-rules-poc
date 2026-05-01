@@ -16,6 +16,7 @@ const RULES = [
   "rules/examples/06-floor-cap.json",
   "rules/examples/07-two-track-ecr.json",
   "rules/examples/08-ch-withholding.json",
+  "rules/examples/09-step-up-bond.json",
 ];
 
 const BASIS_ENUM: Record<string, number> = {
@@ -114,6 +115,23 @@ function previewFromWasm(
       ecr = wasm.previewEcr(balance, rule.ratePolicy.fixedBps, ecrBps, reserveBps, basis, fromTs, toTs);
       break;
     }
+    case "step-up": {
+      // JS-side iteration over the schedule, calling previewSimple per segment.
+      // Mirrors the on-chain StepUpStrategy.previewAccrual semantics: each step's
+      // overlap with [fromTs, toTs] accrues at that step's rate; pre-first-step = 0.
+      const steps = rule.ratePolicy.schedule as Array<{ atTimestamp: number; bps: number }>;
+      let sum = 0n;
+      for (let i = 0; i < steps.length; i++) {
+        const stepStart = BigInt(steps[i].atTimestamp);
+        const stepEnd = i + 1 < steps.length ? BigInt(steps[i + 1].atTimestamp) : 0xffffffffffffffffn;
+        const subFrom = fromTs > stepStart ? fromTs : stepStart;
+        const subTo = toTs < stepEnd ? toTs : stepEnd;
+        if (subFrom >= subTo) continue;
+        sum += wasm.previewSimple(balance, steps[i].bps, basis, subFrom, subTo);
+      }
+      gross = sum;
+      break;
+    }
   }
 
   let net = gross;
@@ -192,6 +210,12 @@ describe("Parity: WASM ≡ Solidity", function () {
         const reserveBps = rule.twoTrack.reserveRequirementBps ?? 0;
         const F = await ethers.getContractFactory("TwoTrackStrategy");
         strat = await F.deploy(rule.ratePolicy.fixedBps, hardBps, ecrBps, reserveBps, basis);
+      } else if (rule.kind === "step-up") {
+        const schedule = rule.ratePolicy.schedule as Array<{ atTimestamp: number; bps: number }>;
+        const timestamps = schedule.map((s) => BigInt(s.atTimestamp));
+        const bpsList = schedule.map((s) => s.bps);
+        const F = await ethers.getContractFactory("StepUpStrategy");
+        strat = await F.deploy(timestamps, bpsList, basis);
       }
 
       const solGross = await strat.previewAccrual(balance, fromTs, toTs);
