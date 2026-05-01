@@ -50,7 +50,7 @@
     "@types/node": "^20.11.0",
     "ajv": "^8.12.0",
     "ajv-formats": "^3.0.1",
-    "assemblyscript": "^0.27.29",
+    "assemblyscript": "^0.28.17",
     "chai": "^6.2.2",
     "hardhat": "^2.22.0",
     "hardhat-gas-reporter": "^2.2.0",
