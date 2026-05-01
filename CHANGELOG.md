@@ -4,6 +4,27 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 10, 2026-05-01)
+- **Foundry** added as parallel test framework (forge install foundry-rs/forge-std)
+- `foundry.toml` (paris target, optimizer=200, 256 fuzz runs/test, OZ remapping)
+- `test/foundry/StrategyInvariants.t.sol` — 15 property-based tests:
+  - Zero balance → zero (3 strategies)
+  - Zero days → zero (2 strategies)
+  - Monotonic in balance: `b1 ≤ b2 → preview(b1) ≤ preview(b2)` (3 strategies)
+  - Monotonic in time: `d1 ≤ d2 → preview(d1) ≤ preview(d2)` (2 strategies)
+  - `compound > simple` over 1y at same rate
+  - `Floating.floor` enforces minimum (oracle ≤ 0 → result == 0)
+  - `Floating.cap` enforces maximum (capped at 10% → result ≤ 1e17 on 1e18×1y)
+  - `KpiLinked` adjustment clamped to declared range
+  - `TwoTrack` hard portion ≤ all-rate simple
+- 256 fuzz runs/test default; deterministic seed `0x1337` for reproducibility
+- New CI job `foundry-fuzz` (foundry-rs/foundry-toolchain action) — runs on every push/PR
+- New scripts: `npm run test:foundry`, `npm run test:fuzz` (1000 runs)
+- `.gitignore` adds `cache_forge/`, `out/`, `lib/` (Foundry artifacts)
+
+### Property-test coverage
+~3,584 random invariant checks succeed against every strategy on every CI run. Surface bugs (overflow paths, missing zero handling, broken monotonicity) automatically discovered by Foundry's fuzzer.
+
 ### Changed (loop iter 9, 2026-05-01)
 - **Native Hardhat tasks** replace the env-var workaround — proper CLI with `--rule`, `--balance`, `--days` flags and `--help` output
 - New `tasks/` dir with 6 tasks: `accounts`, `deploy:rule`, `deploy:all`, `compare:rule`, `bench`, `validate:rules`

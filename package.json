@@ -7,6 +7,8 @@
   "scripts": {
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "test:foundry": "forge test",
+    "test:fuzz": "forge test --fuzz-runs 1000",
     "wasm:build": "asc wasm/assembly/index.ts --target release --outFile wasm/build/release.wasm --textFile wasm/build/release.wat --bindings esm",
     "wasm:build:debug": "asc wasm/assembly/index.ts --target debug --outFile wasm/build/debug.wasm --bindings esm",
     "lint:sol": "solhint 'contracts/**/*.sol'",

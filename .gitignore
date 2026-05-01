@@ -1,6 +1,9 @@
 node_modules/
 artifacts/
 cache/
+cache_forge/
+out/
+lib/
 dist/
 typechain-types/
 wasm/build/

@@ -43,6 +43,37 @@ jobs:
           path: ${{ steps.slither.outputs.sarif }}
           if-no-files-found: ignore
 
+  foundry-fuzz:
+    name: Foundry fuzz tests (256 runs/test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - name: Install Node deps (for OZ contracts on remapping)
+        run: npm ci
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+      - name: Install forge-std
+        run: forge install foundry-rs/forge-std --no-git
+      - name: forge build
+        run: forge build --sizes
+      - name: forge test
+        run: forge test -vv
+      - name: Forge coverage (best effort)
+        run: forge coverage --report lcov || true
+        continue-on-error: true
+      - name: Upload forge coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: forge-coverage
+          path: lcov.info
+          if-no-files-found: ignore
+
   build-test:
     name: Build + test (WASM + Solidity + parity)
     runs-on: ubuntu-latest
