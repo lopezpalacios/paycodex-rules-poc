@@ -248,7 +248,7 @@ Beyond the PoC scope but required before issuance:
 - [ ] **Rate limiting on `/api/deploy-deposit`** — limit per-customer per-day deploys
 - [ ] **Sanctions screening** — check `customer` against OFAC/EU sanctions lists before deploying
 - [ ] **Customer authentication** — KYC + tax residency cert; map signed customer intent → backend deploy
-- [ ] **Tax remittance contract** — when WHT is enabled, route the WHT amount to a real tax-collection contract, not back to issuer (current PoC keeps it as accounting only)
+- [x] **Tax remittance contract** — `TaxCollector.sol` shipped iter 16. Each `postInterest()` mints the gross interest, transfers the WHT slice to the collector, and emits `recordCollection` audit event. Production: replace the open `MockERC20.mint` with a real bank treasury authority + wire `TaxCollector.remit(...)` to the actual tax-authority address (CH ESTV, etc.) on the regulator's schedule.
 - [ ] **Operator role separation** — `RuleRegistry.operator` should be a multisig, not a single EOA
 - [ ] **Slither + mutation runs gated on merge** — currently advisory; flip to required status checks
 - [ ] **Witness data backup** — Besu chain data → S3 / GCS with point-in-time recovery
@@ -382,7 +382,7 @@ Run `npm run wasm:build` first. The WASM binary is git-ignored.
 
 (Tracked here so reviewers don't have to grep for caveats.)
 
-1. **WHT remittance** is accounting only — `postInterest` deducts the WHT amount but doesn't transfer it to a tax-collection address (would be one extra `transfer()` in `InterestBearingDeposit.postInterest`)
+1. ~~WHT remittance is accounting only~~ — **Closed in iter 16.** `TaxCollector.sol` receives WHT via `asset.safeTransfer` and records each collection with a `Collected` event for audit. Operator can call `TaxCollector.remit(...)` to forward to the real tax-authority address.
 2. **Single-customer deposits** — production would use a pooled `Pattern B` (Aave-style index) for many holders per strategy
 3. **30/360 day-count** — approximated as act/360 in the math library; true 30/360 needs a date library (not gas-cheap)
 4. **act/act-ISDA** — simplified to act/365; leap-year handling not implemented

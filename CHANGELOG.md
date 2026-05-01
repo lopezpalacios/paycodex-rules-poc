@@ -4,6 +4,27 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 16, 2026-05-01) — WHT remittance is now real
+- New `TaxCollector` contract — single destination for WHT remittance from many deposits; records each collection as event for audit
+- New `ITaxCollector` interface in `contracts/interfaces/`
+- `InterestBearingDeposit.postInterest()` now:
+  - Mints `gross` interest into the deposit (via `IMintable.mint` — bank-issued credit)
+  - Transfers `wht` slice to the configured `taxCollector` via `asset.safeTransfer`
+  - Calls `taxCollector.recordCollection(asset, wht, ruleId)` for the audit event
+  - Capitalises `net = gross - wht` into principal
+- `DepositFactory.deploy()` takes additional `address taxCollector` parameter (zero when WHT disabled)
+- `WhtRequiresCollector` custom error — constructor reverts if WHT enabled with zero collector
+- Reordered `postInterest` to follow Checks-Effects-Interactions (state writes happen before any external call) — Slither reentrancy-no-eth + reentrancy-events findings resolved
+- `TaxCollector` explicitly inherits `ITaxCollector` — Slither missing-inheritance resolved
+- Lifecycle test verifies: WHT amount lands in collector's USDC balance + `collectedTotal` mapping increments
+- DEPLOYMENT.md hardening checklist: WHT-remittance moved from `[ ]` to `[x]`
+- Closed PoC limitation #1 from DEPLOYMENT.md
+
+### Tests + Slither
+- 33 Hardhat tests still pass
+- 15 Foundry fuzz tests still pass (256 runs each)
+- Slither: **0 findings** maintained
+
 ### Added (loop iter 15, 2026-05-01) — DEPLOYMENT.md
 - Operator-side deployment guide covering 4 scenarios: local dev, local Besu+UI, CI, production sketch
 - Production hardening checklist (mTLS, sanctions, KYC, multi-validator, Vault/KMS/HSM key sources, multisig operator, FireFly migration)

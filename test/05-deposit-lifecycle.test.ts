@@ -3,6 +3,7 @@
 // including time-travel via hardhat to advance accrual.
 
 import { expect } from "chai";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { ethers, network } from "hardhat";
 
 const SECONDS_PER_DAY = 86400n;
@@ -32,8 +33,11 @@ describe("InterestBearingDeposit lifecycle", function () {
     const F = await ethers.getContractFactory("DepositFactory");
     const fac = await F.deploy(await reg.getAddress());
 
+    const TC = await ethers.getContractFactory("TaxCollector");
+    const taxCollector = await TC.deploy(customer.address, "CH-VST");
+
     // Deploy with WHT enabled (35% CH-VST style)
-    const tx = await fac.deploy(ruleId, await usdc.getAddress(), customer.address, true, 3500);
+    const tx = await fac.deploy(ruleId, await usdc.getAddress(), customer.address, true, 3500, await taxCollector.getAddress());
     const rcpt = await tx.wait();
     const log = rcpt!.logs.find((l: any) => {
       try {
@@ -58,9 +62,14 @@ describe("InterestBearingDeposit lifecycle", function () {
     expect(preview).to.equal(35_000n);
 
     // Post interest: gross 35_000, WHT 35% = 12_250, net 22_750 → principal becomes 1_022_750
-    await dep.postInterest();
+    // WHT 12_250 transferred from deposit to TaxCollector via asset.transfer
+    await expect(dep.postInterest())
+      .to.emit(dep, "Posted")
+      .withArgs(35_000n, 12_250n, 22_750n, anyValue);
     expect(await dep.principal()).to.equal(1_000_000n + 22_750n);
     expect(await dep.accruedInterest()).to.equal(0n);
+    expect(await usdc.balanceOf(await taxCollector.getAddress())).to.equal(12_250n);
+    expect(await taxCollector.collectedTotal(await usdc.getAddress())).to.equal(12_250n);
 
     // Withdraw 500_000 — accrual should be effectively 0 since we just posted
     await dep.withdraw(500_000n);
@@ -79,7 +88,7 @@ describe("InterestBearingDeposit lifecycle", function () {
     await reg.register(ruleId, await strat.getAddress(), ethers.ZeroHash);
     const F = await ethers.getContractFactory("DepositFactory");
     const fac = await F.deploy(await reg.getAddress());
-    const tx = await fac.deploy(ruleId, await usdc.getAddress(), customer.address, false, 0);
+    const tx = await fac.deploy(ruleId, await usdc.getAddress(), customer.address, false, 0, ethers.ZeroAddress);
     const rcpt = await tx.wait();
     const log = rcpt!.logs.find((l: any) => {
       try { return fac.interface.parseLog(l)?.name === "DepositDeployed"; } catch { return false; }

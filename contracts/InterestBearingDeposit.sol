@@ -4,10 +4,17 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IInterestStrategy} from "./interfaces/IInterestStrategy.sol";
+import {ITaxCollector} from "./interfaces/ITaxCollector.sol";
+
+interface IMintable {
+    function mint(address to, uint256 amount) external;
+}
 
 /// @title InterestBearingDeposit
-/// @notice Single-customer deposit that accrues interest per a pluggable strategy. Posted on demand or at redemption.
-/// @dev Demo: avg-daily-balance approximated by point-in-time balance at posting. Production would track weighted balance.
+/// @notice Single-customer deposit that accrues interest per a pluggable strategy.
+///         Interest is posted on demand. WHT (when enabled) is transferred to a
+///         TaxCollector on every post, with the deposit's principal credited net.
+/// @dev Demo: avg-daily-balance approximated by point-in-time balance at posting.
 contract InterestBearingDeposit {
     using SafeERC20 for IERC20;
 
@@ -23,6 +30,7 @@ contract InterestBearingDeposit {
     // Withholding (optional)
     bool    public immutable whtEnabled;
     uint256 public immutable whtBps;
+    address public immutable taxCollector;   // zero when WHT not enabled
 
     event Deposited(uint256 amount, uint256 newPrincipal);
     event Withdrawn(uint256 amount, uint256 newPrincipal);
@@ -31,6 +39,7 @@ contract InterestBearingDeposit {
     error NotCustomer();
     error InsufficientFunds();
     error ZeroAddress();
+    error WhtRequiresCollector();
 
     constructor(
         IERC20 asset_,
@@ -38,17 +47,20 @@ contract InterestBearingDeposit {
         address customer_,
         bytes32 ruleId_,
         bool whtEnabled_,
-        uint256 whtBps_
+        uint256 whtBps_,
+        address taxCollector_
     ) {
         if (address(asset_) == address(0) || address(strategy_) == address(0) || customer_ == address(0)) {
             revert ZeroAddress();
         }
+        if (whtEnabled_ && taxCollector_ == address(0)) revert WhtRequiresCollector();
         asset = asset_;
         strategy = strategy_;
         customer = customer_;
         ruleId = ruleId_;
         whtEnabled = whtEnabled_;
         whtBps = whtBps_;
+        taxCollector = taxCollector_;
         lastPostedAt = uint64(block.timestamp);
     }
 
@@ -72,19 +84,35 @@ contract InterestBearingDeposit {
         emit Withdrawn(amount, principal);
     }
 
-    /// @notice Post accrued interest: capitalise gross to principal, transfer WHT to bank if applicable, return net.
-    /// @dev WHT transferred to operator (= strategy address proxy here, simplified). Real impl uses tax-collection account.
+    /// @notice Post accrued interest: bank mints `gross` of `asset` into the deposit's
+    ///         balance (covering interest credit), the WHT slice is transferred to the
+    ///         tax collector, and the net is capitalised into principal.
+    /// @dev For PoC: `asset` is MockERC20 with permissionless `mint(...)`. Real bank
+    ///      deployment uses a controlled mint authority (treasury operations) that
+    ///      this contract is permissioned to invoke. The mint represents the bank
+    ///      crediting interest from its NIM book — see CHANGELOG iter 16 +
+    ///      paycodex/concepts/interest-calculation.md.
     function postInterest() external returns (uint256 netCredited) {
         _accrueToNow();
+        // === Checks + Effects (state writes happen BEFORE any external call) ===
         uint256 gross = accruedInterest;
         accruedInterest = 0;
-        uint256 wht = 0;
-        if (whtEnabled && gross > 0) {
-            wht = (gross * whtBps) / 10000;
-        }
+        uint256 wht = whtEnabled && gross > 0 ? (gross * whtBps) / 10000 : 0;
         netCredited = gross - wht;
         principal += netCredited;
         emit Posted(gross, wht, netCredited, uint64(block.timestamp));
+
+        // === Interactions (last, after all state writes) ===
+        if (gross > 0) {
+            // Mint gross interest into this deposit (bank-issued credit). For PoC,
+            // MockERC20 has permissionless mint; production wires this to the bank's
+            // treasury / mint authority.
+            IMintable(address(asset)).mint(address(this), gross);
+            if (wht > 0) {
+                asset.safeTransfer(taxCollector, wht);
+                ITaxCollector(taxCollector).recordCollection(asset, wht, ruleId);
+            }
+        }
     }
 
     /// @notice Read-only preview of accrual from `lastPostedAt` to `block.timestamp`, plus already-accrued.

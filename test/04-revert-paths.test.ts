@@ -91,7 +91,7 @@ describe("Custom errors: registry + factory access control", function () {
     const M = await ethers.getContractFactory("MockERC20");
     const m = await M.deploy("USDC", "USDC", 6);
     await expect(
-      fac.deploy(id, await m.getAddress(), op.address, false, 0),
+      fac.deploy(id, await m.getAddress(), op.address, false, 0, ethers.ZeroAddress),
     ).to.be.revertedWithCustomError(fac, "RuleDeprecated");
   });
 });
@@ -109,7 +109,7 @@ describe("Custom errors: deposit access control", function () {
     const fac = await F.deploy(await reg.getAddress());
     const M = await ethers.getContractFactory("MockERC20");
     const m = await M.deploy("USDC", "USDC", 6);
-    const tx = await fac.deploy(id, await m.getAddress(), customer.address, false, 0);
+    const tx = await fac.deploy(id, await m.getAddress(), customer.address, false, 0, ethers.ZeroAddress);
     const rcpt = await tx.wait();
     const log = rcpt!.logs.find((l: any) => {
       try {

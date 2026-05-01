@@ -74,7 +74,7 @@ async function bench(hre: any, rule: string, kind: string): Promise<Row> {
   const fac = await (await ethers.getContractFactory("DepositFactory")).deploy(await reg.getAddress());
   await fac.waitForDeployment();
 
-  const dtx = await fac.deploy(ruleId, await usdc.getAddress(), signer.address, false, 0);
+  const dtx = await fac.deploy(ruleId, await usdc.getAddress(), signer.address, false, 0, ethers.ZeroAddress);
   const drcpt = await dtx.wait();
   const deployDepositGas = drcpt!.gasUsed;
   let depositAddr = "?";

@@ -17,7 +17,7 @@ const NETWORK = process.env.NETWORK ?? "besu";
 const WEB3SIGNER_URL = process.env.WEB3SIGNER_URL ?? "http://127.0.0.1:9000";
 
 const FACTORY_ABI = [
-  "function deploy(bytes32 ruleId, address asset, address customer, bool whtEnabled, uint256 whtBps) returns (address)",
+  "function deploy(bytes32 ruleId, address asset, address customer, bool whtEnabled, uint256 whtBps, address taxCollector) returns (address)",
   "event DepositDeployed(bytes32 indexed ruleId, address indexed customer, address indexed deposit, address strategy)",
 ];
 
@@ -109,6 +109,7 @@ app.post("/api/deploy-deposit", async (req, res) => {
     const issuerAddr = await signer.getAddress();
     const targetCustomer = customer ?? issuerAddr;
     const factory = new Contract(deps.DepositFactory, FACTORY_ABI, signer);
+    const collector = whtEnabled ? (deps.TaxCollector ?? ethers.ZeroAddress) : ethers.ZeroAddress;
     // Besu rejects gasPrice=0 under EIP-1559 baseFee>0; use 1 gwei legacy tx.
     const tx = await factory.deploy(
       ruleIdToBytes32(ruleId),
@@ -116,6 +117,7 @@ app.post("/api/deploy-deposit", async (req, res) => {
       targetCustomer,
       !!whtEnabled,
       Number(whtBps ?? 0),
+      collector,
       { gasPrice: 1_000_000_000n, type: 0 },
     );
     const rcpt = await tx.wait();

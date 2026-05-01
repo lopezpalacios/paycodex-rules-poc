@@ -65,6 +65,11 @@ async function ensureCore(hre: any, deps: Record<string, string>) {
     await c.waitForDeployment();
     deps.MockKpiOracle_GHG = await c.getAddress();
   }
+  if (!deps.TaxCollector) {
+    const c = await (await ethers.getContractFactory("TaxCollector")).deploy(signer.address, "MULTI");
+    await c.waitForDeployment();
+    deps.TaxCollector = await c.getAddress();
+  }
   saveDeps(hre.network.name, deps);
 }
 
@@ -141,7 +146,8 @@ export async function deployRule(hre: any, rulePath: string) {
   const Factory = await ethers.getContractAt("DepositFactory", deps.DepositFactory);
   const whtEnabled = !!rule.withholding?.enabled;
   const whtBps = rule.withholding?.rateBps ?? 0;
-  const tx = await Factory.deploy(ruleIdB32, deps.MockUSDC, signer.address, whtEnabled, whtBps);
+  const collector = whtEnabled ? deps.TaxCollector : ethers.ZeroAddress;
+  const tx = await Factory.deploy(ruleIdB32, deps.MockUSDC, signer.address, whtEnabled, whtBps, collector);
   const rcpt = await tx.wait();
   let depositAddr = "?";
   for (const log of rcpt!.logs) {
