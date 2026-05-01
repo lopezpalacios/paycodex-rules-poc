@@ -1,0 +1,41 @@
+name: Mutation testing (nightly)
+
+on:
+  schedule:
+    - cron: "0 4 * * *"   # 04:00 UTC nightly
+  workflow_dispatch:       # manual trigger
+
+permissions:
+  contents: read
+  issues: write   # to file an issue if mutation score regresses
+
+jobs:
+  mutate:
+    name: slither-mutate over strategies
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: npm }
+      - run: npm ci
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install slither + solc
+        run: |
+          pip install slither-analyzer
+          pip install solc-select
+          solc-select install 0.8.24
+          solc-select use 0.8.24
+      - name: Compile contracts
+        run: npm run compile
+      - name: Run mutation campaign on strategies
+        run: bash scripts/mutation-test.sh contracts/strategies/
+        continue-on-error: true
+      - name: Upload mutation campaign results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mutation-campaign
+          path: mutation_campaign/
+          if-no-files-found: ignore

@@ -1,0 +1,11 @@
+{
+  "name": "strategy",
+  "description": "IInterestStrategy view interface (kind, dayCount, previewAccrual). One FireFly API per deployed strategy address.",
+  "interface": {
+    "name": "IInterestStrategy",
+    "version": "0.1.0"
+  },
+  "location": {
+    "address": "REPLACE_WITH_STRATEGY_ADDRESS_FOR_THIS_RULE_FROM_DEPLOYMENTS_JSON"
+  }
+}

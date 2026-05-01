@@ -1,0 +1,11 @@
+{
+  "name": "rule-registry",
+  "description": "Append-only registry mapping ruleId → strategy address + ruleHash. Maps to contracts/RuleRegistry.sol.",
+  "interface": {
+    "name": "RuleRegistry",
+    "version": "0.1.0"
+  },
+  "location": {
+    "address": "REPLACE_WITH_DEPLOYED_ADDRESS_FROM_DEPLOYMENTS_JSON"
+  }
+}

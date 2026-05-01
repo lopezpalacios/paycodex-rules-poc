@@ -1,0 +1,11 @@
+{
+  "name": "deposit-factory",
+  "description": "Rule-driven InterestBearingDeposit factory. Maps to contracts/DepositFactory.sol.",
+  "interface": {
+    "name": "DepositFactory",
+    "version": "0.1.0"
+  },
+  "location": {
+    "address": "REPLACE_WITH_DEPLOYED_ADDRESS_FROM_DEPLOYMENTS_JSON"
+  }
+}
