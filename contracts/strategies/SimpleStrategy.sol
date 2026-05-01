@@ -10,8 +10,10 @@ contract SimpleStrategy is IInterestStrategy {
     int256 public immutable rateBps;     // signed; negative supported (capped by registry-side validation)
     DayCount.Basis public immutable basis;
 
+    error RateOutOfRange(int256 rateBps);
+
     constructor(int256 rateBps_, DayCount.Basis basis_) {
-        require(rateBps_ >= -10000 && rateBps_ <= 10000, "Simple: rate out of range");
+        if (rateBps_ < -10000 || rateBps_ > 10000) revert RateOutOfRange(rateBps_);
         rateBps = rateBps_;
         basis = basis_;
     }

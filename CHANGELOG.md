@@ -4,6 +4,12 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed (loop iter 2, 2026-05-01)
+- All `require(... , string)` converted to typed custom errors across strategies, library, and registry
+- Re-enabled `gas-custom-errors` solhint rule (was disabled in iter 1)
+- New test file `test/04-revert-paths.test.ts`: 10 revert-path tests covering every constructor precondition, registry access control, factory deprecation guard, and deposit access control
+- Total tests: 30 passing (was 20)
+
 ### Added (loop iter 1, 2026-05-01)
 - GitHub Actions CI workflow: lint, schema validation, WASM build, contract compile, tests, gas report artifact (`.github/workflows/ci.yml`)
 - Solhint configuration (`.solhint.json`, `.solhintignore`)

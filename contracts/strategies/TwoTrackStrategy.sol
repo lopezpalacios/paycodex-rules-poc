@@ -16,10 +16,14 @@ contract TwoTrackStrategy is IInterestStrategy {
     uint256 public immutable reserveReqBps;    // applied to ECR portion only
     DayCount.Basis public immutable basis;
 
+    error PortionOverflow(uint256 sum);
+    error RateTooHigh(uint256 rateBps);
+    error ReserveTooHigh(uint256 reserveBps);
+
     constructor(uint256 rateBps_, uint256 hardPortionBps_, uint256 ecrPortionBps_, uint256 reserveReqBps_, DayCount.Basis basis_) {
-        require(hardPortionBps_ + ecrPortionBps_ <= 10000, "TwoTrack: portion overflow");
-        require(rateBps_ <= 10000, "TwoTrack: rate too high");
-        require(reserveReqBps_ <= 10000, "TwoTrack: reserve too high");
+        if (hardPortionBps_ + ecrPortionBps_ > 10000) revert PortionOverflow(hardPortionBps_ + ecrPortionBps_);
+        if (rateBps_ > 10000) revert RateTooHigh(rateBps_);
+        if (reserveReqBps_ > 10000) revert ReserveTooHigh(reserveReqBps_);
         rateBps = rateBps_;
         hardPortionBps = hardPortionBps_;
         ecrPortionBps = ecrPortionBps_;

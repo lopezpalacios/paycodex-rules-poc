@@ -24,6 +24,7 @@ contract RuleRegistry {
     error NotOperator();
     error AlreadyRegistered(bytes32 ruleId);
     error UnknownRule(bytes32 ruleId);
+    error MissingIntrospection();
 
     constructor(address operator_) {
         operator = operator_;
@@ -39,7 +40,7 @@ contract RuleRegistry {
         // Read kind/dayCount lazily via static calls to avoid hard ABI coupling
         (bool okK, bytes memory rK) = strategy.staticcall(abi.encodeWithSignature("kind()"));
         (bool okD, bytes memory rD) = strategy.staticcall(abi.encodeWithSignature("dayCount()"));
-        require(okK && okD, "Registry: strategy missing introspection");
+        if (!okK || !okD) revert MissingIntrospection();
         string memory k = abi.decode(rK, (string));
         string memory dc = abi.decode(rD, (string));
 

@@ -14,8 +14,10 @@ contract KpiLinkedStrategy is IInterestStrategy {
     int16 public immutable maxDelta;
     DayCount.Basis public immutable basis;
 
+    error BadRange(int16 minDelta, int16 maxDelta);
+
     constructor(IKpiOracle kpi_, int256 baseSpreadBps_, int16 minDelta_, int16 maxDelta_, DayCount.Basis basis_) {
-        require(maxDelta_ >= minDelta_, "KPI: bad range");
+        if (maxDelta_ < minDelta_) revert BadRange(minDelta_, maxDelta_);
         kpi = kpi_;
         baseSpreadBps = baseSpreadBps_;
         minDelta = minDelta_;

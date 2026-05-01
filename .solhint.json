@@ -9,7 +9,7 @@
     "no-inline-assembly": "off",
     "reason-string": ["warn", { "maxLength": 64 }],
     "immutable-vars-naming": "off",
-    "gas-custom-errors": "off"
+    "gas-custom-errors": "warn"
   }
 }
 

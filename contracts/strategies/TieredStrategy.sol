@@ -16,11 +16,15 @@ contract TieredStrategy is IInterestStrategy {
     Tier[] private _tiers;
     DayCount.Basis public immutable basis;
 
+    error BadLength();
+    error NotSorted(uint256 index);
+    error RateTooHigh(uint256 index, uint256 rateBps);
+
     constructor(uint256[] memory upTos, uint256[] memory bpsList, DayCount.Basis basis_) {
-        require(upTos.length == bpsList.length && upTos.length > 0, "Tiered: bad length");
+        if (upTos.length != bpsList.length || upTos.length == 0) revert BadLength();
         for (uint256 i = 0; i < upTos.length; i++) {
-            if (i > 0) require(upTos[i] > upTos[i - 1], "Tiered: not sorted");
-            require(bpsList[i] <= 10000, "Tiered: rate too high");
+            if (i > 0 && upTos[i] <= upTos[i - 1]) revert NotSorted(i);
+            if (bpsList[i] > 10000) revert RateTooHigh(i, bpsList[i]);
             _tiers.push(Tier({ upTo: upTos[i], bps: bpsList[i] }));
         }
         basis = basis_;

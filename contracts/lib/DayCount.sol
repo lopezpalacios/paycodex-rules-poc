@@ -12,13 +12,16 @@ library DayCount {
 
     enum Basis { ACT_360, ACT_365, THIRTY_360, ACT_ACT_ISDA }
 
+    error NegativePeriod(uint64 fromTs, uint64 toTs);
+    error UnknownBasis(string s);
+
     /// @notice Returns day-count fraction as (days, denominator). Caller does `principal * rateBps * days / (10000 * denom)`.
     function daysAndDenominator(Basis b, uint64 fromTs, uint64 toTs)
         internal
         pure
         returns (uint256 daysCount, uint256 denominator)
     {
-        require(toTs >= fromTs, "DayCount: negative period");
+        if (toTs < fromTs) revert NegativePeriod(fromTs, toTs);
         daysCount = (uint256(toTs) - uint256(fromTs)) / SECONDS_PER_DAY;
         if (b == Basis.ACT_360) denominator = 360;
         else if (b == Basis.ACT_365) denominator = 365;
@@ -32,7 +35,7 @@ library DayCount {
         if (h == keccak256("act/365")) return Basis.ACT_365;
         if (h == keccak256("30/360")) return Basis.THIRTY_360;
         if (h == keccak256("act/act-isda")) return Basis.ACT_ACT_ISDA;
-        revert("DayCount: unknown basis");
+        revert UnknownBasis(s);
     }
 
     function toString(Basis b) internal pure returns (string memory) {

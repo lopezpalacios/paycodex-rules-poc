@@ -13,8 +13,10 @@ contract CompoundDailyStrategy is IInterestStrategy {
     uint256 public immutable rateBps;
     DayCount.Basis public immutable basis;
 
+    error RateTooHigh(uint256 rateBps);
+
     constructor(uint256 rateBps_, DayCount.Basis basis_) {
-        require(rateBps_ <= 10000, "Compound: rate too high");
+        if (rateBps_ > 10000) revert RateTooHigh(rateBps_);
         rateBps = rateBps_;
         basis = basis_;
     }
