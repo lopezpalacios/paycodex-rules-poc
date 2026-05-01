@@ -4,6 +4,15 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 45, 2026-05-02) — Docker smoke build in CI
+- New `docker-smoke` job in `ci.yml` runs on every push/PR (alongside Slither, Foundry, Build+test):
+  - Builds `Dockerfile` via buildx with `push: false, load: true`
+  - Runs the container with stub `PAYCODEX_API_KEYS` / `PAYCODEX_ADMIN_KEYS`
+  - Polls `GET /api/health` until it gets HTTP 200 OR 500 (500 is the expected "web3signer unreachable" path — still proves the Express server bound and is responsive)
+  - Caches buildx layers via `type=gha,scope=docker-smoke` so warm runs are seconds
+  - Times out at 8 minutes (image build is ~2min cold)
+- Catches Dockerfile regressions on every push, not just at release time. The release workflow's `publish-backend-image` builds the same Dockerfile but already-merged-broken Docker would still tag a release — this guards the merge gate.
+
 ### Added (loop iter 44, 2026-05-02) — GHCR docker image publish on release
 - `release.yml` gains a second job `publish-backend-image`:
   - Triggers on the same `v*.*.*` tag push

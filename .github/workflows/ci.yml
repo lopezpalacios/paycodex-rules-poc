@@ -174,6 +174,48 @@ jobs:
           path: dist/ui/
           if-no-files-found: ignore
 
+  docker-smoke:
+    name: Docker image smoke build
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v3
+      - name: Build backend image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: paycodex-backend:ci
+          cache-from: type=gha,scope=docker-smoke
+          cache-to: type=gha,scope=docker-smoke,mode=max
+      - name: Run container + curl /api/health
+        run: |
+          docker run -d --name smoke -p 3099:3001 \
+            -e PAYCODEX_API_KEYS="ci:secret" \
+            -e PAYCODEX_ADMIN_KEYS="secret" \
+            paycodex-backend:ci
+          # Wait up to 15s for the server to bind. /api/health returns 500 when
+          # web3signer is unreachable (expected here) — that's still proof of life.
+          for i in {1..15}; do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3099/api/health || echo 000)
+            echo "  attempt $i: HTTP=$CODE"
+            if [ "$CODE" = "500" ] || [ "$CODE" = "200" ]; then
+              echo "  ✓ server is alive"
+              docker logs smoke 2>&1 | tail -10
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Container did not respond on /api/health within 15s"
+          docker logs smoke 2>&1 | tail -30
+          exit 1
+      - name: Cleanup
+        if: always()
+        run: docker rm -f smoke || true
+
   besu-e2e:
     name: Besu IBFT2 end-to-end deploy
     runs-on: ubuntu-latest
