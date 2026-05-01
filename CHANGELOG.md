@@ -4,6 +4,28 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 15, 2026-05-01) — DEPLOYMENT.md
+- Operator-side deployment guide covering 4 scenarios: local dev, local Besu+UI, CI, production sketch
+- Production hardening checklist (mTLS, sanctions, KYC, multi-validator, Vault/KMS/HSM key sources, multisig operator, FireFly migration)
+- Troubleshooting section (Besu /data perms, gasPrice, Web3signer batching, ESM, WASM build)
+- Command cheat sheet, layout reference, known PoC limitations enumerated
+
+### Added (loop iter 14, 2026-05-01) — Mutation testing
+- `slither-mutate` (Trail of Bits) wired
+- `scripts/mutation-test.sh` runner; sensible mutator subset (AOR, ASOR, BOR, FHR, LIR, LOR, MIA, MVIE, MVIV, MWA, ROR, RR — skips CR/SBR/UOR noise)
+- `.github/workflows/mutation.yml` — nightly cron 04:00 UTC + manual dispatch
+- `MUTATION_TESTING.md` — score interpretation, survivor triage workflow
+
+### Added (loop iter 13, 2026-05-01) — EXECUTIVE-DECK.md
+- Marp-format 12-slide deck: problem, solution, 8 rules, architecture diagram, key custody, test counts, gas table, banker FAQ, KG companions, run instructions
+- Render: `marp EXECUTIVE-DECK.md --pptx -o exec.pptx`
+
+### Added (loop iter 12, 2026-05-01) — FireFly skeleton
+- `firefly/` integration plan + config artifacts for the Hyperledger FireFly supernode (Kaleido-donated)
+- API definitions for `rule-registry`, `deposit-factory`, `strategy`
+- Migration mapping documented: every Express endpoint → FireFly REST equivalent
+- Actual `ff start` deferred (heavy stack)
+
 ### Added (loop iter 11, 2026-05-01)
 - **Bruno** API collection in `bruno/paycodex-rules-poc/` — OSS Postman alternative, flat-file `.bru` text format
 - 5 documented requests covering every backend endpoint:
