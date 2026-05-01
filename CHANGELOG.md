@@ -4,6 +4,34 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 32, 2026-05-01) — PoolFactory + deploy:pool task
+- New `contracts/PoolFactory.sol` (~30 LOC) — mirror of `DepositFactory` for the Pattern B pool. Reads from the same `RuleRegistry`, so a single ruleId can be deployed in either shape (deposit OR pool, OR both).
+- New `tasks/deploy-pool.ts` Hardhat task: `npx hardhat deploy:pool --rule rules/examples/01-simple-act360.json --network besu-signer`. Auto-deploys `PoolFactory` on first invocation, then creates a pool per rule.
+- Wired in `tasks/index.ts`
+- New `test/09-pool-factory.test.ts` — 5 tests:
+  - Factory deploys a pool wired to the correct strategy/asset/ruleId
+  - Rejects deprecated rules with `RuleDeprecated`
+  - Rejects unknown rules (bubbles up `UnknownRule` from registry)
+  - End-to-end: factory → pool → deposit → time-travel 360d → withdraw
+  - Multiple pools for same rule are independent (separate addresses)
+- Tests: **59 hardhat** (was 54) + 18 wasm + 15 fuzz × 256 runs, all green
+- Slither: 0 findings maintained
+
+### Symmetry achieved
+Both accrual patterns now have a complete factory + task path, sharing the same registry:
+
+```
+RuleRegistry  ──┬─→  DepositFactory  ──→  InterestBearingDeposit  (single-holder)
+                └─→  PoolFactory     ──→  InterestBearingPool     (multi-holder, RAY index)
+```
+
+Operator flow:
+```bash
+npx hardhat deploy:rule --rule rules/examples/01-simple-act360.json --network besu-signer
+npx hardhat deploy:pool --rule rules/examples/01-simple-act360.json --network besu-signer
+# Now both Deposit_simple-act360-eur-350 AND Pool_simple-act360-eur-350 exist
+```
+
 ### Added (loop iter 31, 2026-05-01) — InterestBearingPool (Pattern B, Aave-style index)
 - **Real architectural addition.** Multi-holder pooled deposit; many depositors share a single strategy contract. O(1) accrual per user — transfers don't trigger per-user math.
 - New `contracts/InterestBearingPool.sol` (~170 LOC, NatSpec'd):

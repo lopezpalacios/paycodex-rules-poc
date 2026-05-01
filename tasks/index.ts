@@ -3,6 +3,7 @@
 
 import "./accounts";
 import "./deploy-rule";
+import "./deploy-pool";
 import "./deploy-all";
 import "./compare-rule";
 import "./bench";
