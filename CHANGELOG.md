@@ -4,6 +4,15 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 4, 2026-05-01)
+- Real Besu IBFT2 genesis generated via `besu operator generate-blockchain-config` (Docker)
+- New validator address `0xacfebbfffcc5da7cc2a42d5a075572132e5102a6` with matching key in `besu/key`
+- `besu/ibft-config.json` — input spec; `besu/regenerate.sh` — idempotent regen script
+- `docker-compose.yml` adds `user: root` for /data permission fix
+- `hardhat.config.ts` `besu.gasPrice` raised to 1 gwei (Besu rejects 0 under EIP-1559)
+- Verified: contract deploys end-to-end on Besu (strategy → registry → factory → deposit)
+- CI Besu E2E job re-enabled (was `if: false`); deploys 3 rule variants per PR
+
 ### Added (loop iter 3, 2026-05-01)
 - `solidity-coverage` wired via `npm run coverage`
 - AS-side unit tests `wasm/tests/run.mjs` — 18 direct tests of WASM exports
