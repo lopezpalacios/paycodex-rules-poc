@@ -242,7 +242,7 @@ For real deposits:
 
 Beyond the PoC scope but required before issuance:
 
-- [ ] **Multi-validator Besu** — minimum 4 validators for IBFT2 byzantine tolerance, distributed across availability zones
+- [~] **Multi-validator Besu** — partially shipped iter 20. 4-validator IBFT2 stack at `besu/multivalidator/` (chain ID 1338). Genesis + key generation + compose + static-IP peering all configured. **Caveat:** Besu 24.3.0 static-nodes-only peering is intermittent; reaching IBFT2 quorum reliably needs bootnode + discovery (≈half-day operator follow-up — see `besu/multivalidator/README.md`). The single-validator stack remains the per-PR E2E target until then.
 - [ ] **mTLS on RPC** — Besu and Web3signer endpoints behind TLS with client cert auth
 - [x] **Authentication on the Express backend** — shipped iter 17. Bearer-token API keys via `PAYCODEX_API_KEYS=name:secret,…` + `PAYCODEX_ADMIN_KEYS=name,…`. Read endpoints require any key; `deploy-deposit` requires admin. `health` is unauthenticated for liveness probes. Production: swap static keys for OAuth2 / mTLS / SPIFFE.
 - [x] **Rate limiting on `/api/deploy-deposit`** — shipped iter 19. In-memory token bucket per customer. Configurable via `PAYCODEX_RATE_LIMIT_MAX` (default 5) + `PAYCODEX_RATE_LIMIT_WINDOW_MS` (default 86,400,000 = 24h). Returns HTTP 429 with `Retry-After` header. Admin-introspectable via `GET /api/admin/rate-limit/:customer`. Production swap: Redis-backed (multi-instance backend).

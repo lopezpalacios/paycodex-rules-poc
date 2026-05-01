@@ -1,0 +1,112 @@
+services:
+  besu-1: &besu_template
+    image: hyperledger/besu:24.3.0
+    restart: unless-stopped
+    user: root
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator-1/key:/config/key:ro
+      - ./static-nodes.json:/config/static-nodes.json:ro
+      - besu-1-data:/data
+    command: &cmd
+      - --data-path=/data
+      - --genesis-file=/config/genesis.json
+      - --node-private-key-file=/config/key
+      - --static-nodes-file=/config/static-nodes.json
+      - --rpc-http-enabled
+      - --rpc-http-host=0.0.0.0
+      - --rpc-http-port=8545
+      - --rpc-http-cors-origins=all
+      - --rpc-http-api=ETH,NET,WEB3,IBFT,ADMIN,DEBUG,TXPOOL
+      - --rpc-ws-enabled
+      - --rpc-ws-host=0.0.0.0
+      - --rpc-ws-port=8546
+      - --p2p-host=0.0.0.0
+      - --p2p-port=30303
+      - --host-allowlist=*
+      - --discovery-enabled=false
+      - --min-gas-price=0
+      - --logging=INFO
+    container_name: paycodex-besu-1
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.11
+    ports:
+      - "8545:8545"
+      - "8546:8546"
+
+  besu-2:
+    <<: *besu_template
+    container_name: paycodex-besu-2
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator-2/key:/config/key:ro
+      - ./static-nodes.json:/config/static-nodes.json:ro
+      - besu-2-data:/data
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.12
+    ports: []
+
+  besu-3:
+    <<: *besu_template
+    container_name: paycodex-besu-3
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator-3/key:/config/key:ro
+      - ./static-nodes.json:/config/static-nodes.json:ro
+      - besu-3-data:/data
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.13
+    ports: []
+
+  besu-4:
+    <<: *besu_template
+    container_name: paycodex-besu-4
+    volumes:
+      - ./genesis.json:/config/genesis.json:ro
+      - ./keys/validator-4/key:/config/key:ro
+      - ./static-nodes.json:/config/static-nodes.json:ro
+      - besu-4-data:/data
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.14
+    ports: []
+
+  web3signer:
+    image: consensys/web3signer:26.4.2
+    container_name: paycodex-web3signer-multi
+    restart: unless-stopped
+    depends_on:
+      - besu-1
+    networks:
+      paycodex-net:
+        ipv4_address: 172.30.30.20
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./web3signer/keys:/keys:ro
+    command:
+      - --key-store-path=/keys
+      - --http-listen-host=0.0.0.0
+      - --http-listen-port=9000
+      - --http-cors-origins=all
+      - --http-host-allowlist=*
+      - eth1
+      - --downstream-http-host=besu-1
+      - --downstream-http-port=8545
+      - --chain-id=1338
+
+networks:
+  paycodex-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.30.0/24
+
+volumes:
+  besu-1-data:
+  besu-2-data:
+  besu-3-data:
+  besu-4-data:

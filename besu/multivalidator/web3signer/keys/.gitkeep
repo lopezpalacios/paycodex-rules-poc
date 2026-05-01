@@ -1,0 +1,6 @@
+# Web3signer keystore for the multi-validator stack lives here.
+# After running `regenerate.sh`, copy keys/validator-1/key into a
+# `<address-of-validator-1>.yaml` file in this directory using the
+# `file-raw` shape documented in besu/web3signer/README.md.
+#
+# Or use HashiCorp Vault / AWS KMS / Azure Key Vault for production.
