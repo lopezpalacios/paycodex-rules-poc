@@ -4,6 +4,39 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 19, 2026-05-01) — Rate limiting + signed customer intent
+- **Per-customer rate limiting** on `/api/deploy-deposit` (in-memory token bucket, sliding window):
+  - `PAYCODEX_RATE_LIMIT_MAX` (default 5) — max deploys per customer per window
+  - `PAYCODEX_RATE_LIMIT_WINDOW_MS` (default 86,400,000 = 24h)
+  - HTTP 429 with `Retry-After` header when exceeded
+  - Admin introspection: `GET /api/admin/rate-limit/:customer` returns `{ seen, max, windowMs, remaining }`
+- **EIP-712 signed customer intent verification**:
+  - New `DepositIntent` typed message: `{ ruleId, customer, whtEnabled, whtBps, nonce, expiry }`
+  - Domain: `{ name: "paycodex-rules-poc", version: "1", chainId: 1337 }`
+  - When `intent` + `signature` present, backend verifies signature recovers `intent.customer`, checks expiry, rejects reused nonce
+  - When `PAYCODEX_REQUIRE_INTENT=true`, intent is **mandatory** for every deploy-deposit
+  - 401 rejection paths: bad signature, expired, reused nonce
+  - Schema introspection endpoint: `GET /api/intent-schema`
+- New `scripts/sign-intent.mjs` CLI — produces ready-to-POST signed body. Helps demo + QA workflows.
+- `npm run sign-intent` script
+- Bruno collection: `08-signed-intent.bru` + `09-rate-limit-status.bru`
+- DEPLOYMENT.md hardening checklist:
+  - "Rate limiting" `[ ]` → `[x]`
+  - "Customer authentication" `[ ]` → `[x]` (signed-intent path)
+
+### Verified end-to-end on Besu+Web3signer
+| Probe | Expected | Got |
+|---|---|---|
+| Sign intent + POST → 200 | `viaSignedIntent: true`, deposit deployed | ✅ |
+| Replay same nonce → 401 | "nonce X already used by Y" | ✅ |
+| 3 attempts on same customer (max=2) | 200, 200, 429 | ✅ |
+| Rate-limit introspection | `{seen:2, max:2, remaining:0}` | ✅ |
+| Intent-schema introspection | EIP-712 domain + types JSON | ✅ |
+
+### Production hardening — 10/11 closed
+- ✅ Tax remittance · ✅ Auth · ✅ Sanctions · ✅ Operator multisig · ✅ Rate limiting · ✅ Customer auth (signed intent)
+- Still open: multi-validator Besu, mTLS, gated CI checks, witness backup, incident runbook
+
 ### Added (loop iter 18, 2026-05-01) — Operator multisig
 - New `OperatorMultisig.sol` — K-of-N multisig contract that wraps any single-operator target (e.g. `RuleRegistry`). Submit/approve/cancel/auto-execute on threshold. ~120 LOC, 9 typed errors, zero deps.
 - Per-proposal storage: `target`, `data`, `approvals`, `executed`, `cancelled`. Approval bitmap via `mapping(uint256 → mapping(address → bool))`.

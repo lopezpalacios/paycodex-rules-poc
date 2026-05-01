@@ -22,6 +22,7 @@
     "deploy:all": "hardhat deploy:all",
     "bench": "hardhat bench",
     "server": "node scripts/server.mjs",
+    "sign-intent": "node scripts/sign-intent.mjs",
     "simulate": "node scripts/simulate.mjs",
     "ui": "vite ui",
     "ui:build": "vite build ui"

@@ -1,0 +1,37 @@
+meta {
+  name: GET /api/admin/rate-limit/:customer
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/admin/rate-limit/{{customer}}
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+}
+
+vars {
+  customer: 0xacfebbfffcc5da7cc2a42d5a075572132e5102a6
+}
+
+assert {
+  res.status: eq 200
+  res.body.max: isDefined
+  res.body.remaining: isDefined
+}
+
+docs {
+  Admin introspection. Returns:
+  - seen        : deploy-deposit calls counted in the current window
+  - max         : configured PAYCODEX_RATE_LIMIT_MAX (default 5)
+  - windowMs    : configured PAYCODEX_RATE_LIMIT_WINDOW_MS (default 86_400_000 = 24h)
+  - remaining   : max - seen, floored at 0
+
+  Useful for ops dashboards and customer-service workflows ("why is
+  this customer being rate-limited?").
+}

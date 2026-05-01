@@ -1,0 +1,59 @@
+meta {
+  name: POST /api/deploy-deposit (EIP-712 signed intent)
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/deploy-deposit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+}
+
+body:json {
+  {
+    "intent": {
+      "ruleId": "simple-act360-eur-350",
+      "customer": "0xPLACEHOLDER_CUSTOMER_ADDRESS",
+      "whtEnabled": false,
+      "whtBps": 0,
+      "nonce": "PLACEHOLDER_NONCE",
+      "expiry": "PLACEHOLDER_EXPIRY_UNIX_SECONDS"
+    },
+    "signature": "0xPLACEHOLDER_SIGNATURE"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.viaSignedIntent: eq true
+}
+
+docs {
+  Customer-driven flow: customer signs an EIP-712 DepositIntent off-chain
+  with their banking-app key. Backend verifies the signature recovers
+  intent.customer, checks expiry, ensures the nonce is fresh, then
+  submits factory.deploy.
+
+  Generate a fresh body locally:
+
+      node scripts/sign-intent.mjs --rule simple-act360-eur-350 \
+        --privkey 0x<customer-privkey>
+
+  This prints a JSON body ready to paste here. Copy the entire object
+  (intent + signature) into the body above.
+
+  Rejection paths:
+  - Bad signature           → 401 "signature mismatch"
+  - Expired (expiry < now)  → 401 "intent expired"
+  - Reused nonce            → 401 "nonce X already used by Y"
+
+  When PAYCODEX_REQUIRE_INTENT=true at server start, all deploy-deposit
+  calls MUST go through this flow (operator-driven body shape rejected).
+}

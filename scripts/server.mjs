@@ -9,12 +9,17 @@
 // Run:
 //   PAYCODEX_API_KEYS='reader:read-secret,admin:admin-secret' \
 //   PAYCODEX_ADMIN_KEYS='admin' \
+//   PAYCODEX_RATE_LIMIT_MAX=5 \
+//   PAYCODEX_RATE_LIMIT_WINDOW_MS=86400000 \
+//   PAYCODEX_REQUIRE_INTENT=false \
 //   NETWORK=besu-signer node scripts/server.mjs
 //
-// PAYCODEX_API_KEYS  — comma-separated `name:secret` pairs (any caller with one of these
-//                      passes auth on read endpoints)
-// PAYCODEX_ADMIN_KEYS — comma-separated names from the above that may use write endpoints
-// PAYCODEX_BLOCKLIST  — path to JSON array of blocked addresses (default: data/sanctions/blocklist.json)
+// PAYCODEX_API_KEYS         — comma-separated `name:secret` pairs (key → role mapping)
+// PAYCODEX_ADMIN_KEYS       — comma-separated names from the above that may use write endpoints
+// PAYCODEX_BLOCKLIST        — path to JSON array of blocked addresses (default: data/sanctions/blocklist.json)
+// PAYCODEX_RATE_LIMIT_MAX   — max deploy-deposit calls per customer per window (default: 5)
+// PAYCODEX_RATE_LIMIT_WINDOW_MS — sliding window length in ms (default: 86400000 = 24h)
+// PAYCODEX_REQUIRE_INTENT   — if "true", deploy-deposit MUST include EIP-712 signed customer intent (default: false)
 //
 // If PAYCODEX_API_KEYS is empty, auth is disabled (dev mode). Logged loudly at startup.
 
@@ -27,6 +32,26 @@ const PORT = Number(process.env.PORT ?? 3001);
 const NETWORK = process.env.NETWORK ?? "besu";
 const WEB3SIGNER_URL = process.env.WEB3SIGNER_URL ?? "http://127.0.0.1:9000";
 const BLOCKLIST_PATH = process.env.PAYCODEX_BLOCKLIST ?? "data/sanctions/blocklist.json";
+const RATE_LIMIT_MAX = Number(process.env.PAYCODEX_RATE_LIMIT_MAX ?? 5);
+const RATE_LIMIT_WINDOW_MS = Number(process.env.PAYCODEX_RATE_LIMIT_WINDOW_MS ?? 86_400_000);
+const REQUIRE_INTENT = (process.env.PAYCODEX_REQUIRE_INTENT ?? "false").toLowerCase() === "true";
+
+const EIP712_DOMAIN = {
+  name: "paycodex-rules-poc",
+  version: "1",
+  chainId: 1337,
+};
+
+const EIP712_TYPES = {
+  DepositIntent: [
+    { name: "ruleId",     type: "string"  },
+    { name: "customer",   type: "address" },
+    { name: "whtEnabled", type: "bool"    },
+    { name: "whtBps",     type: "uint256" },
+    { name: "nonce",      type: "uint256" },
+    { name: "expiry",     type: "uint256" },
+  ],
+};
 
 const FACTORY_ABI = [
   "function deploy(bytes32 ruleId, address asset, address customer, bool whtEnabled, uint256 whtBps, address taxCollector) returns (address)",
@@ -91,6 +116,56 @@ let BLOCKLIST = loadBlocklist();
 function reloadBlocklist() {
   BLOCKLIST = loadBlocklist();
   return BLOCKLIST.size;
+}
+
+// === Per-customer rate limiting (in-memory; production swap: Redis) ===
+
+const customerHits = new Map();   // lowercase address → bigint[] of timestamps (ms)
+
+function checkRateLimit(customer) {
+  const key = String(customer).toLowerCase();
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const prior = customerHits.get(key) ?? [];
+  const live = prior.filter((t) => t > cutoff);
+  if (live.length >= RATE_LIMIT_MAX) {
+    const oldest = Math.min(...live);
+    return { ok: false, retryAfterSec: Math.ceil((oldest + RATE_LIMIT_WINDOW_MS - now) / 1000), seen: live.length };
+  }
+  live.push(now);
+  customerHits.set(key, live);
+  return { ok: true, seen: live.length };
+}
+
+// === EIP-712 signed customer intent ===
+//
+// Customer signs `DepositIntent` off-chain with their banking-app key. Backend
+// verifies the signature recovers `intent.customer`, checks expiry + nonce
+// uniqueness, then submits factory.deploy on the customer's behalf.
+//
+// Helper to produce a signature: `node scripts/sign-intent.mjs --help`.
+
+const seenNonces = new Map();   // customer (lowercase) → Set<nonce>
+
+function verifyIntent(intent, signature) {
+  if (!intent || !signature) throw new Error("intent + signature required");
+  const required = ["ruleId", "customer", "whtEnabled", "whtBps", "nonce", "expiry"];
+  for (const f of required) {
+    if (intent[f] === undefined) throw new Error(`intent.${f} missing`);
+  }
+  const now = Math.floor(Date.now() / 1000);
+  if (Number(intent.expiry) <= now) throw new Error(`intent expired (expiry=${intent.expiry}, now=${now})`);
+
+  const recovered = ethers.verifyTypedData(EIP712_DOMAIN, EIP712_TYPES, intent, signature);
+  if (recovered.toLowerCase() !== String(intent.customer).toLowerCase()) {
+    throw new Error(`signature mismatch: recovered=${recovered} intent.customer=${intent.customer}`);
+  }
+
+  const ckey = String(intent.customer).toLowerCase();
+  const seen = seenNonces.get(ckey) ?? new Set();
+  if (seen.has(String(intent.nonce))) throw new Error(`nonce ${intent.nonce} already used by ${intent.customer}`);
+  seen.add(String(intent.nonce));
+  seenNonces.set(ckey, seen);
 }
 
 // === Provider ===
@@ -179,15 +254,37 @@ app.post("/api/preview-onchain", requireAuth("any"), async (req, res) => {
 
 app.post("/api/deploy-deposit", requireAuth("admin"), async (req, res) => {
   try {
-    const { ruleId, customer, whtEnabled, whtBps } = req.body;
-    if (!ruleId) return res.status(400).json({ error: "missing ruleId" });
+    const { ruleId, customer, whtEnabled, whtBps, intent, signature } = req.body;
+    if (!ruleId && !intent) return res.status(400).json({ error: "missing ruleId (or intent)" });
+
+    // === Optional EIP-712 intent verification ===
+    let resolvedRuleId = ruleId;
+    let resolvedCustomer = customer;
+    let resolvedWht = !!whtEnabled;
+    let resolvedWhtBps = Number(whtBps ?? 0);
+    if (intent || REQUIRE_INTENT) {
+      if (!intent || !signature) {
+        return res.status(400).json({ error: "PAYCODEX_REQUIRE_INTENT enabled or partial intent: both `intent` and `signature` required" });
+      }
+      try {
+        verifyIntent(intent, signature);
+      } catch (e) {
+        console.warn(`[server] INTENT REJECTED: ${e.message}`);
+        return res.status(401).json({ error: `intent rejected: ${e.message}` });
+      }
+      resolvedRuleId = intent.ruleId;
+      resolvedCustomer = intent.customer;
+      resolvedWht = !!intent.whtEnabled;
+      resolvedWhtBps = Number(intent.whtBps);
+    }
+
     const deps = loadDeployments();
     if (!deps.DepositFactory || !deps.MockUSDC) {
       return res.status(500).json({ error: "DepositFactory or MockUSDC missing in deployments" });
     }
     const signer = await getSigner();
     const issuerAddr = await signer.getAddress();
-    const targetCustomer = customer ?? issuerAddr;
+    const targetCustomer = resolvedCustomer ?? issuerAddr;
 
     // Sanctions screen
     if (BLOCKLIST.has(String(targetCustomer).toLowerCase())) {
@@ -195,14 +292,27 @@ app.post("/api/deploy-deposit", requireAuth("admin"), async (req, res) => {
       return res.status(451).json({ error: `customer address blocked: ${targetCustomer}` });
     }
 
+    // Rate limit (per customer)
+    const rl = checkRateLimit(targetCustomer);
+    if (!rl.ok) {
+      console.warn(`[server] RATE-LIMITED ${targetCustomer}: ${rl.seen} hits in window, retry after ${rl.retryAfterSec}s`);
+      res.setHeader("Retry-After", String(rl.retryAfterSec));
+      return res.status(429).json({
+        error: `rate limit exceeded for customer ${targetCustomer}`,
+        max: RATE_LIMIT_MAX,
+        windowMs: RATE_LIMIT_WINDOW_MS,
+        retryAfterSec: rl.retryAfterSec,
+      });
+    }
+
     const factory = new Contract(deps.DepositFactory, FACTORY_ABI, signer);
-    const collector = whtEnabled ? (deps.TaxCollector ?? ethers.ZeroAddress) : ethers.ZeroAddress;
+    const collector = resolvedWht ? (deps.TaxCollector ?? ethers.ZeroAddress) : ethers.ZeroAddress;
     const tx = await factory.deploy(
-      ruleIdToBytes32(ruleId),
+      ruleIdToBytes32(resolvedRuleId),
       deps.MockUSDC,
       targetCustomer,
-      !!whtEnabled,
-      Number(whtBps ?? 0),
+      resolvedWht,
+      resolvedWhtBps,
       collector,
       { gasPrice: 1_000_000_000n, type: 0 },
     );
@@ -226,6 +336,8 @@ app.post("/api/deploy-deposit", requireAuth("admin"), async (req, res) => {
       gasUsed: rcpt.gasUsed.toString(),
       deposit: depositAddr,
       authedAs: req.apiKeyName ?? null,
+      viaSignedIntent: !!intent,
+      rateLimitSeen: rl.seen,
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
@@ -238,6 +350,26 @@ app.post("/api/admin/reload-blocklist", requireAuth("admin"), (_req, res) => {
   res.json({ ok: true, blocklistSize: size });
 });
 
+// Admin-only: introspect the rate-limit state for a specific customer
+app.get("/api/admin/rate-limit/:customer", requireAuth("admin"), (req, res) => {
+  const key = String(req.params.customer).toLowerCase();
+  const now = Date.now();
+  const cutoff = now - RATE_LIMIT_WINDOW_MS;
+  const live = (customerHits.get(key) ?? []).filter((t) => t > cutoff);
+  res.json({
+    customer: req.params.customer,
+    seen: live.length,
+    max: RATE_LIMIT_MAX,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    remaining: Math.max(0, RATE_LIMIT_MAX - live.length),
+  });
+});
+
+// Admin-only: serve the EIP-712 domain + types so clients can sign without hard-coding
+app.get("/api/intent-schema", requireAuth("any"), (_req, res) => {
+  res.json({ domain: EIP712_DOMAIN, types: EIP712_TYPES });
+});
+
 app.listen(PORT, () => {
   console.log(`[server] paycodex-rules-poc backend on :${PORT}`);
   console.log(`[server] network=${NETWORK} web3signer=${WEB3SIGNER_URL}`);
@@ -247,10 +379,14 @@ app.listen(PORT, () => {
     console.log(`[server] auth: enabled, ${API_KEYS.size} key(s), admin roles: [${[...ADMIN_NAMES].join(", ")}]`);
   }
   console.log(`[server] sanctions blocklist: ${BLOCKLIST.size} address(es) loaded from ${BLOCKLIST_PATH}`);
+  console.log(`[server] rate limit: ${RATE_LIMIT_MAX} deploys per customer per ${Math.round(RATE_LIMIT_WINDOW_MS/3600000)}h sliding window`);
+  console.log(`[server] customer-intent: ${REQUIRE_INTENT ? "REQUIRED (EIP-712 signature)" : "optional"}`);
   console.log(`[server] endpoints:`);
   console.log(`  GET  /api/health                       (no auth)`);
   console.log(`  GET  /api/deployments                  (any auth)`);
+  console.log(`  GET  /api/intent-schema                (any auth)`);
   console.log(`  POST /api/preview-onchain              (any auth)`);
-  console.log(`  POST /api/deploy-deposit               (admin auth + sanctions screen)`);
+  console.log(`  POST /api/deploy-deposit               (admin auth + sanctions + rate-limit + optional EIP-712 intent)`);
   console.log(`  POST /api/admin/reload-blocklist       (admin auth)`);
+  console.log(`  GET  /api/admin/rate-limit/:customer   (admin auth)`);
 });
