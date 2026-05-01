@@ -4,6 +4,14 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Fixed (loop iter 39, 2026-05-02) — Foundry install 403 flake on hosted runners
+- Hosted CI iter 38 (sha 5a49d21) initially failed because `foundryup` got `curl 403` from the unauthenticated GitHub API. Rerun passed cleanly — pure infra flake, not a code regression.
+- Hardened: pass `GITHUB_TOKEN` env to `foundry-rs/foundry-toolchain@v1` so its curl/`gh` calls authenticate and stop hitting anonymous rate limits.
+
+### Verified (this iter)
+- Hosted CI for sha 5a49d21 (iter 38): all 4 jobs ✅ after rerun (Slither, Foundry fuzz, Build+test, Besu IBFT2 e2e)
+- Self-hosted dispatch run `25235838930` on `mac-mini-runner-paycodex`: all 8 steps ✅ (checkout, setup-node, npm ci, lint, validate, wasm:build, compile, wasm:test, npm test)
+
 ### Added (loop iter 38, 2026-05-02) — Self-hosted Mac Mini runner + ci-self-hosted workflow
 - **CI/CD verification**:
   - iter 36 (sha 8868f7c) `npm ci --legacy-peer-deps` fix verified ✅ on hosted runners — `Slither`, `Foundry fuzz`, `Build+test`, `Besu IBFT2 e2e` all green for sha 764cee7 (iter 37)
