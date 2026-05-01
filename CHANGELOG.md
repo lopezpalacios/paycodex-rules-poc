@@ -4,6 +4,12 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Repo hardening (loop iter 47, 2026-05-02) — Docker smoke is now a merge gate
+- After iter 46 confirmed `Docker image smoke build` is green and reliable, added it to the required status checks on `main`:
+  - Required: `Slither static analysis`, `Build + test (WASM + Solidity + parity)`, `Docker image smoke build`
+  - Still informational: `Foundry fuzz tests`, `Besu IBFT2 end-to-end deploy` (kept off the gate because they have legitimate infra-flake modes)
+- A Dockerfile regression now blocks merges, not just shows up as a CI failure to ignore.
+
 ### Fixed (loop iter 46, 2026-05-02) — Dockerfile broke on CI checkout
 - iter 45's docker-smoke caught a real bug: `Dockerfile` had `COPY .deployments ./.deployments`, but `.deployments/` is gitignored — exists on dev machines from local Hardhat runs, doesn't exist on a fresh GHA checkout. Build failed: `"/.deployments": not found`.
 - Fix: replaced the COPY with `RUN mkdir -p /app/.deployments`. The directory is per-network runtime state, not image content. Operators mount it as a volume (`besu/docker-compose.yml` already does `- ../.deployments:/app/.deployments:ro`).
