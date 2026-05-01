@@ -4,6 +4,20 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 44, 2026-05-02) — GHCR docker image publish on release
+- `release.yml` gains a second job `publish-backend-image`:
+  - Triggers on the same `v*.*.*` tag push
+  - `needs: build-and-release` so the GitHub Release exists before any container goes out
+  - Multi-arch build (`linux/amd64,linux/arm64`) via `docker/setup-buildx-action@v3` + `docker/build-push-action@v6`
+  - Pushes to `ghcr.io/lopezpalacios/paycodex-rules-poc-backend` with two tags: `<release-tag>` and `latest`
+  - Adds standard OCI labels (`org.opencontainers.image.source/version/licenses`)
+  - GHA build cache (`type=gha`, `mode=max`) so the second tag of any release builds in seconds
+- `permissions:` now includes `packages: write` for the GHCR push
+- Closes the deploy loop: tag → ZIP artifacts attached to GitHub Release → multi-arch container at `ghcr.io/...:vX.Y.Z` consumable by anyone running the `besu/docker-compose.yml` stack
+
+### Verified (this iter)
+- Merged Dependabot PR #14 (vite 5.4 → 8.0 in dev-tooling group). All 6 hosted CI jobs ✅ AND self-hosted Mac Mini fast-build-test ✅. Closes the open PR queue.
+
 ### Repo hardening (loop iter 43, 2026-05-02) — Round 2 Dependabot triage
 - After iter 42 closed/merged the first wave, Dependabot opened 4 new PRs from rebases against the bumped main:
   - **Merged 3** (all 4 hosted CI checks green):
