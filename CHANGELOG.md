@@ -4,6 +4,12 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Fixed (loop iter 46, 2026-05-02) — Dockerfile broke on CI checkout
+- iter 45's docker-smoke caught a real bug: `Dockerfile` had `COPY .deployments ./.deployments`, but `.deployments/` is gitignored — exists on dev machines from local Hardhat runs, doesn't exist on a fresh GHA checkout. Build failed: `"/.deployments": not found`.
+- Fix: replaced the COPY with `RUN mkdir -p /app/.deployments`. The directory is per-network runtime state, not image content. Operators mount it as a volume (`besu/docker-compose.yml` already does `- ../.deployments:/app/.deployments:ro`).
+- Verified locally: rebuild clean → container alive → HTTP 500 from `/api/health` (web3signer unreachable, expected).
+- This is exactly what iter 45's smoke job is for: catches Dockerfile breakage on every push so it never reaches release.
+
 ### Added (loop iter 45, 2026-05-02) — Docker smoke build in CI
 - New `docker-smoke` job in `ci.yml` runs on every push/PR (alongside Slither, Foundry, Build+test):
   - Builds `Dockerfile` via buildx with `push: false, load: true`

@@ -7,7 +7,13 @@ RUN npm ci --legacy-peer-deps --omit=dev || npm ci --legacy-peer-deps
 
 COPY scripts ./scripts
 COPY data ./data
-COPY .deployments ./.deployments
+
+# .deployments/ is per-network state, not baked into the image.
+# Operators mount it as a volume at runtime (see besu/docker-compose.yml:
+# `volumes: - ../.deployments:/app/.deployments:ro`). Create an empty
+# placeholder so server.mjs's existsSync checks resolve cleanly when
+# the volume isn't mounted (smoke tests, ad-hoc runs).
+RUN mkdir -p /app/.deployments
 
 FROM node:20-alpine AS runtime
 
