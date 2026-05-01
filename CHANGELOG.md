@@ -4,6 +4,15 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 3, 2026-05-01)
+- `solidity-coverage` wired via `npm run coverage`
+- AS-side unit tests `wasm/tests/run.mjs` — 18 direct tests of WASM exports
+- New `npm run wasm:test` script; chained into `qa`
+- Deposit-lifecycle test `test/05-deposit-lifecycle.test.ts` — full deposit → time-travel → postInterest with WHT path
+- CI: WASM tests step + coverage step + coverage artifact upload
+- Line coverage 76.88% → 92.47%
+- Total: 33 Hardhat tests + 18 WASM tests
+
 ### Changed (loop iter 2, 2026-05-01)
 - All `require(... , string)` converted to typed custom errors across strategies, library, and registry
 - Re-enabled `gas-custom-errors` solhint rule (was disabled in iter 1)
