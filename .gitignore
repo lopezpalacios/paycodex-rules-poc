@@ -12,3 +12,5 @@ besu/data/
 .DS_Store
 coverage/
 coverage.json
+coverage-summary.txt
+gas-report.txt
