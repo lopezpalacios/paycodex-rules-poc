@@ -1,0 +1,52 @@
+meta {
+  name: POST /api/deploy-deposit
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/deploy-deposit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "ruleId": "{{ruleId}}",
+    "whtEnabled": false,
+    "whtBps": 0
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: eq true
+  res.body.deposit: isDefined
+  res.body.txHash: isDefined
+}
+
+docs {
+  Submits a `factory.deploy()` transaction. **Web3signer signs** the tx with
+  the issuer's loaded key — no MetaMask, no privkey on the backend, no privkey
+  in hardhat config. Customer field defaults to the issuer address.
+
+  Returns:
+  - ok: true
+  - issuer: the Web3signer key address
+  - customer: the deposit beneficiary
+  - txHash, blockNumber, gasUsed
+  - deposit: address of the newly minted InterestBearingDeposit instance
+
+  This is the production-shape API call — what a bank's customer-onboarding
+  service hits after authenticating the user.
+
+  Override `whtEnabled` + `whtBps` for jurisdictions with withholding (e.g. CH
+  Verrechnungssteuer 35%):
+
+      { "ruleId": "ch-vst-savings", "whtEnabled": true, "whtBps": 3500 }
+}

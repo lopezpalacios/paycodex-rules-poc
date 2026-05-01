@@ -1,0 +1,27 @@
+meta {
+  name: GET /api/deployments
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/deployments
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Returns the contents of `.deployments/<network>.json` — the address book
+  for the current network (MockUSDC, RuleRegistry, DepositFactory, mock oracles,
+  and Strategy_<ruleId> + Deposit_<ruleId> for every registered rule).
+
+  Run `npx hardhat deploy:all --network besu-signer` first to populate.
+}

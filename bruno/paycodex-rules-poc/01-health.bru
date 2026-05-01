@@ -1,0 +1,30 @@
+meta {
+  name: GET /api/health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/health
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: eq true
+}
+
+docs {
+  Probes that:
+  - The Express backend (`scripts/server.mjs`) is up
+  - Web3signer is reachable on http://127.0.0.1:9000
+  - Web3signer has at least one signing key loaded
+  - Besu RPC is reachable downstream of Web3signer
+
+  Returns: { ok, network, web3signer, accounts, blockNumber }
+}

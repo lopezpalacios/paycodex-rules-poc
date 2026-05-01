@@ -1,0 +1,37 @@
+meta {
+  name: POST /api/deploy-deposit (CH withholding)
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/deploy-deposit
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "ruleId": "ch-vst-savings",
+    "whtEnabled": true,
+    "whtBps": 3500
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.ok: eq true
+}
+
+docs {
+  Same flow as request 4 but enables Verrechnungssteuer (Swiss federal
+  withholding tax, 35%). When `postInterest()` is later called on the resulting
+  deposit, gross interest is reduced by 35% before being credited to principal.
+
+  See concepts/withholding-tax.md in the paycodex KG for the regulatory frame.
+}

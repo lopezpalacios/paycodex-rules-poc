@@ -1,0 +1,41 @@
+meta {
+  name: POST /api/preview-onchain
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/preview-onchain
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Accept: application/json
+}
+
+body:json {
+  {
+    "ruleId": "{{ruleId}}",
+    "balance": "{{balance}}",
+    "fromTs": "1700000000",
+    "toTs": "1731536000"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.gross: isDefined
+}
+
+docs {
+  Read-only call. Calls `strategy.previewAccrual(balance, fromTs, toTs)` on the
+  on-chain Solidity strategy registered for `ruleId`. No transaction submitted.
+
+  Result for the default fixture (simple-act360-eur-350, 1M USDC, 360 days):
+  - gross: "35000"
+
+  Use this to verify on-chain math before triggering a deposit posting, or
+  to cross-check WASM browser previews against authoritative chain state.
+}

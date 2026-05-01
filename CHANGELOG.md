@@ -4,6 +4,18 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 11, 2026-05-01)
+- **Bruno** API collection in `bruno/paycodex-rules-poc/` — OSS Postman alternative, flat-file `.bru` text format
+- 5 documented requests covering every backend endpoint:
+  - `01-health.bru` — GET /api/health (asserts `ok=true`)
+  - `02-deployments.bru` — GET /api/deployments
+  - `03-preview-onchain.bru` — POST /api/preview-onchain (asserts `gross` field present)
+  - `04-deploy-deposit.bru` — POST /api/deploy-deposit (asserts `ok=true`, `deposit` + `txHash` present)
+  - `05-deploy-with-wht.bru` — same with CH 35% Verrechnungssteuer enabled
+- Two environments: `local.bru` (127.0.0.1:3001) + `staging.bru` (placeholder)
+- Each request has inline assertions and `docs {}` blocks explaining the call
+- README documents auditor/compliance use case (flat-file diffability vs Postman cloud)
+
 ### Added (loop iter 10, 2026-05-01)
 - **Foundry** added as parallel test framework (forge install foundry-rs/forge-std)
 - `foundry.toml` (paris target, optimizer=200, 256 fuzz runs/test, OZ remapping)
