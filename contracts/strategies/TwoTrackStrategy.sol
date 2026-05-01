@@ -35,9 +35,8 @@ contract TwoTrackStrategy is IInterestStrategy {
         if (balance == 0 || rateBps == 0 || toTs <= fromTs) return 0;
         (uint256 daysCount, uint256 denom) = DayCount.daysAndDenominator(basis, fromTs, toTs);
         if (daysCount == 0) return 0;
-        // gross = balance * rate * days / (10000 * denom)
-        uint256 gross = (balance * rateBps * daysCount) / (10000 * denom);
-        return (gross * hardPortionBps) / 10000;
+        // Single division at the end to avoid divide-before-multiply precision loss (Slither: divide-before-multiply).
+        return (balance * rateBps * daysCount * hardPortionBps) / (10000 * 10000 * denom);
     }
 
     /// @notice ECR (earnings credit rate) accrual. Soft dollar — fee offset only, NOT capitalised. Reserve requirement reduces base.
@@ -45,9 +44,11 @@ contract TwoTrackStrategy is IInterestStrategy {
         if (avgCollectedBalance == 0 || rateBps == 0 || toTs <= fromTs) return 0;
         (uint256 daysCount, uint256 denom) = DayCount.daysAndDenominator(basis, fromTs, toTs);
         if (daysCount == 0) return 0;
-        uint256 base = (avgCollectedBalance * (10000 - reserveReqBps)) / 10000;
-        uint256 gross = (base * rateBps * daysCount) / (10000 * denom);
-        return (gross * ecrPortionBps) / 10000;
+        // base * rate * days * ecrPortion * (10000 - reserve) / (10000 ^ 3 * denom)
+        // Multiply all numerators first, divide once at the end (avoids precision loss).
+        return
+            (avgCollectedBalance * (10000 - reserveReqBps) * rateBps * daysCount * ecrPortionBps)
+            / (10000 * 10000 * 10000 * denom);
     }
 
     function kind() external pure returns (string memory) { return "two-track"; }

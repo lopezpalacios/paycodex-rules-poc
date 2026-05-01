@@ -25,8 +25,10 @@ contract RuleRegistry {
     error AlreadyRegistered(bytes32 ruleId);
     error UnknownRule(bytes32 ruleId);
     error MissingIntrospection();
+    error ZeroAddress();
 
     constructor(address operator_) {
+        if (operator_ == address(0)) revert ZeroAddress();
         operator = operator_;
     }
 
@@ -36,9 +38,12 @@ contract RuleRegistry {
     }
 
     function register(bytes32 ruleId, address strategy, bytes32 ruleHash) external onlyOperator {
+        if (strategy == address(0)) revert ZeroAddress();
         if (_entries[ruleId].strategy != address(0)) revert AlreadyRegistered(ruleId);
-        // Read kind/dayCount lazily via static calls to avoid hard ABI coupling
+        // Read kind/dayCount lazily via static calls to avoid hard ABI coupling.
+        // slither-disable-next-line low-level-calls
         (bool okK, bytes memory rK) = strategy.staticcall(abi.encodeWithSignature("kind()"));
+        // slither-disable-next-line low-level-calls
         (bool okD, bytes memory rD) = strategy.staticcall(abi.encodeWithSignature("dayCount()"));
         if (!okK || !okD) revert MissingIntrospection();
         string memory k = abi.decode(rK, (string));

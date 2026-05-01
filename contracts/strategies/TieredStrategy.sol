@@ -43,7 +43,8 @@ contract TieredStrategy is IInterestStrategy {
 
         uint256 prevBound = 0;
         uint256 totalInterest = 0;
-        for (uint256 i = 0; i < _tiers.length; i++) {
+        uint256 nTiers = _tiers.length;
+        for (uint256 i = 0; i < nTiers; i++) {
             Tier storage t = _tiers[i];
             if (balance <= prevBound) break;
             uint256 sliceTop = balance < t.upTo ? balance : t.upTo;

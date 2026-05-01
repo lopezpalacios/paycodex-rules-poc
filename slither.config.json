@@ -1,0 +1,13 @@
+{
+  "filter_paths": "node_modules|contracts/mocks|contracts/lib/WadMath.sol",
+  "exclude_informational": false,
+  "exclude_low": false,
+  "exclude_medium": false,
+  "exclude_high": false,
+  "exclude_optimization": false,
+  "detectors_to_exclude": "timestamp",
+  "solc_remaps": [
+    "@openzeppelin/=node_modules/@openzeppelin/"
+  ]
+}
+

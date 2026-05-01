@@ -30,6 +30,7 @@ contract InterestBearingDeposit {
 
     error NotCustomer();
     error InsufficientFunds();
+    error ZeroAddress();
 
     constructor(
         IERC20 asset_,
@@ -39,6 +40,9 @@ contract InterestBearingDeposit {
         bool whtEnabled_,
         uint256 whtBps_
     ) {
+        if (address(asset_) == address(0) || address(strategy_) == address(0) || customer_ == address(0)) {
+            revert ZeroAddress();
+        }
         asset = asset_;
         strategy = strategy_;
         customer = customer_;
