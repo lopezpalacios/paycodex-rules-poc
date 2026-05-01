@@ -4,6 +4,24 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Repo hardening (loop iter 41, 2026-05-02) — Dependabot triage + branch protection
+- **Merged 3 Dependabot PRs** (squash + delete branch):
+  - #2 `actions/checkout` 4 → 6
+  - #3 `actions/setup-python` 5 → 6
+  - #7 `chai` 4.5.0 → 6.2.2
+- **Asked Dependabot to rebase 4 stale PRs** that opened *before* iter 36 npm fix landed (so they hit the legacy-peer-deps issue, not their own incompatibility):
+  - #4 `softprops/action-gh-release` 2 → 3
+  - #5 `hardhat-toolchain` group (9 updates incl. hardhat itself)
+  - #6 `dev-tooling` group (4 updates)
+  - #8 `assemblyscript` 0.27.37 → 0.28.17 (had merge conflict with #7 + #2)
+- **Enabled repo-level auto-merge**: `gh api -X PATCH repos/.../paycodex-rules-poc allow_auto_merge=true delete_branch_on_merge=true`. Future Dependabot PRs that pass CI auto-merge.
+- **Enabled branch protection on `main`**:
+  - `required_status_checks.strict=true` (must be up-to-date with main before merge)
+  - Required contexts: `Slither static analysis`, `Build + test (WASM + Solidity + parity)` — these gate every merge
+  - `Foundry fuzz` and `Besu IBFT2 e2e` are NOT required (they can be infra-flaky; we still want them to run, just not block)
+  - `enforce_admins=false` so I can still push directly when needed
+  - `allow_force_pushes=false`, `allow_deletions=false`
+
 ### Added (loop iter 40, 2026-05-02) — Hosted CI concurrency control + Foundry cache
 - All 4 workflows now have `concurrency:` blocks with carefully chosen semantics:
   - `ci.yml`: `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` — PR pushes supersede prior PR runs (saves CI minutes), but `main` pushes always run to completion (we want the deployment trail intact)
