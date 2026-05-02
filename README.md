@@ -4,7 +4,22 @@
 
 Hardhat · AssemblyScript WASM · Besu IBFT2 · Web3signer · Foundry · Slither.
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/lopezpalacios/paycodex-rules-poc)
+[![Open in DevPod](https://devpod.sh/assets/open-in-devpod.svg)](https://devpod.sh/open#https://github.com/lopezpalacios/paycodex-rules-poc)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/lopezpalacios/paycodex-rules-poc/badge)](https://scorecard.dev/viewer/?uri=github.com/lopezpalacios/paycodex-rules-poc)
+
 Companion to [`paycodex`](../paycodex) (incumbent CH/EU/UK rails knowledge graph) and [`paycodex-onchain`](../paycodex-onchain) (DLT/EVM patterns knowledge graph).
+
+## Devpod / Codespaces
+
+Click any badge above and you get a working environment in minutes — Node 20, Foundry, Slither, solc-select, Docker-in-Docker, all preinstalled. The container's `postCreateCommand` runs `npm ci`, builds WASM, compiles contracts, and prints quick-demo commands.
+
+```bash
+# Once inside the container:
+npm test                                   # 60+ Hardhat tests
+npx hardhat deploy:all --with-pools        # 9 deposits + 9 pools in-memory
+npm run besu:up && npm run server          # real chain + backend on ports 8545/3001
+```
 
 ## Why this exists
 

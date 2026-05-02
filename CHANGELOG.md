@@ -4,6 +4,30 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 51, 2026-05-02) — Devpod/Codespaces-ready devcontainer + CI demo
+- New `.devcontainer/devcontainer.json`:
+  - Base: `mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm`
+  - Features: `docker-in-docker` (so `npm run besu:up` works inside the pod), `python 3.11` (for slither), `github-cli`
+  - Forwards 5 ports with labels: 3001 backend / 5173 Vite UI / 8545+8546 Besu / 9000 Web3signer
+  - Pre-installs Solidity + Hardhat VS Code extensions; opens README + first rule on first launch (Codespaces hint)
+  - `containerEnv` puts `~/.foundry/bin` on PATH so `forge` is available without re-source
+- New `.devcontainer/postCreate.sh`: idempotent installer
+  - Foundry (`curl | bash` + `foundryup`)
+  - `slither-analyzer` + `solc-select 0.8.24` via pip user
+  - `npm ci` + `npm run wasm:build` + `npm run compile` + `lint:sol` + `validate:rules` self-check
+  - Prints a banner with quick-demo commands at the end
+- New `.github/workflows/devcontainer.yml`:
+  - Triggers on `.devcontainer/**` change, `workflow_dispatch`, weekly cron (catches base-image rot), and PR
+  - Uses `devcontainers/ci@v0.3` to build the devcontainer in CI exactly as a developer would on devpod
+  - Push the built image to `ghcr.io/lopezpalacios/paycodex-rules-poc-devcontainer` on `main` (cache for next run); never on PR
+  - **Runs the demo INSIDE the devcontainer**:
+    - `npx hardhat deploy:all --with-pools` — 9 deposits + 9 pools to in-memory hardhat
+    - `npm test` — 60+ Hardhat tests
+    - `npm run wasm:test` — WASM ↔ Solidity parity
+    - `node scripts/simulate.mjs` — non-chain rule preview
+  - Uploads `.deployments/hardhat.json` as an artifact so anyone can inspect the deployed addresses
+- README now has 3 launch badges: Codespaces, DevPod, OpenSSF Scorecard.
+
 ### Added (loop iter 50, 2026-05-02) — OSSF Scorecard workflow
 - New `.github/workflows/scorecard.yml`:
   - Runs on `main` push, weekly cron (Mon 05:00 UTC), `workflow_dispatch`, and `branch_protection_rule` events

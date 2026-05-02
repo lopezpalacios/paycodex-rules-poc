@@ -1,0 +1,57 @@
+{
+  "name": "paycodex-rules-poc",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [3001, 5173, 8545, 8546, 9000],
+  "portsAttributes": {
+    "3001": { "label": "paycodex backend (Express)", "onAutoForward": "notify" },
+    "5173": { "label": "Vite UI dev server",          "onAutoForward": "notify" },
+    "8545": { "label": "Besu JSON-RPC HTTP" },
+    "8546": { "label": "Besu JSON-RPC WS" },
+    "9000": { "label": "Web3signer" }
+  },
+  "postCreateCommand": "bash .devcontainer/postCreate.sh",
+  "remoteUser": "node",
+  "containerEnv": {
+    "FOUNDRY_DIR": "/home/node/.foundry"
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/node/.foundry/bin"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "NomicFoundation.hardhat-solidity",
+        "JuanBlanco.solidity",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "mhutchie.git-graph",
+        "GitHub.vscode-pull-request-github",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "solidity.compileUsingRemoteVersion": "v0.8.24+commit.e11b9ed9",
+        "solidity.defaultCompiler": "remote",
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/cache": true,
+          "**/artifacts": true,
+          "**/typechain-types": true
+        }
+      }
+    },
+    "codespaces": {
+      "openFiles": ["README.md", "rules/examples/01-simple-act360.json"]
+    }
+  }
+}

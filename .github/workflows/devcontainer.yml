@@ -1,0 +1,78 @@
+name: Devcontainer (devpod-ready)
+
+# Build the .devcontainer image and run a deploy demo INSIDE it.
+# Proves the devpod / Codespaces / VS Code Remote-Containers
+# experience works end-to-end on a fresh checkout.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.devcontainer/**'
+      - '.github/workflows/devcontainer.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.devcontainer/**'
+      - '.github/workflows/devcontainer.yml'
+  workflow_dispatch:
+  schedule:
+    # Weekly catch-rot run (Tue 06:00 UTC) — base image moves under us
+    - cron: "0 6 * * 2"
+
+permissions:
+  contents: read
+  packages: write   # for caching the devcontainer build to ghcr.io
+
+concurrency:
+  group: devcontainer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-demo:
+    name: Build devcontainer + demo deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR (for build cache)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build devcontainer + run demo
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/lopezpalacios/paycodex-rules-poc-devcontainer
+          cacheFrom: ghcr.io/lopezpalacios/paycodex-rules-poc-devcontainer
+          push: ${{ github.event_name != 'pull_request' && 'always' || 'never' }}
+          runCmd: |
+            set -euxo pipefail
+            echo "=== devpod demo: deploy 9 rules + 9 pools to in-memory hardhat ==="
+            npx hardhat deploy:all --with-pools
+
+            echo "=== Show resulting deployment registry ==="
+            jq . .deployments/hardhat.json | head -60 || cat .deployments/hardhat.json
+
+            echo "=== Run Hardhat suite (60+ tests) ==="
+            npm test
+
+            echo "=== Run WASM ↔ Solidity parity tests ==="
+            npm run wasm:test
+
+            echo "=== Smoke: backend + simulator scripts run cleanly ==="
+            node scripts/simulate.mjs --rule rules/examples/01-simple-act360.json --balance 1000000 --days 360 || true
+
+      - name: Upload demo deployment registry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: devcontainer-demo-deployments
+          path: .deployments/hardhat.json
+          if-no-files-found: ignore
