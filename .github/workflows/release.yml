@@ -144,7 +144,7 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Trivy vulnerability scan (image)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ghcr.io/lopezpalacios/paycodex-rules-poc-backend:${{ steps.tag.outputs.tag }}
           format: sarif

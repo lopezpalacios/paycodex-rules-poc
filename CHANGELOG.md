@@ -4,6 +4,12 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Fixed (loop iter 54, 2026-05-02) — Trivy action version bug
+- v0.2.0 dry-run caught a real bug: `aquasecurity/trivy-action@0.28.0` doesn't exist in the action's tags. Failed at "Set up job" before any docker steps ran, so GHCR was untouched. Build-and-release succeeded; only publish-backend-image failed.
+- Rolled back v0.2.0 cleanly: `gh release delete v0.2.0 --yes` + `git push --delete origin v0.2.0` + `git tag -d v0.2.0`. Nothing leaked to GHCR.
+- Fix: bump pin to `aquasecurity/trivy-action@v0.36.0` (the action uses `v`-prefixed tags; max real version checked via `gh api /repos/aquasecurity/trivy-action/releases`).
+- Re-tagged v0.2.0 after this fix lands.
+
 ### Fixed + hardened (loop iter 53, 2026-05-02) — Consolidation pass
 This iter responds to a self-critique that flagged 4 things the prior iters shipped without proving:
 
