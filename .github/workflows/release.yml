@@ -133,5 +133,10 @@ jobs:
             org.opencontainers.image.source=https://github.com/lopezpalacios/paycodex-rules-poc
             org.opencontainers.image.version=${{ steps.tag.outputs.tag }}
             org.opencontainers.image.licenses=MIT
+          # Supply-chain attestations attached to the manifest:
+          # - sbom: SPDX inventory of every layer's packages
+          # - provenance: SLSA build provenance (max = full attestation)
+          sbom: true
+          provenance: mode=max
           cache-from: type=gha
           cache-to: type=gha,mode=max

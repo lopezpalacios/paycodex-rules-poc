@@ -4,6 +4,13 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 49, 2026-05-02) — SBOM + SLSA provenance on GHCR image
+- Enabled `sbom: true` and `provenance: mode=max` on the `docker/build-push-action@v6` step in `release.yml`:
+  - SBOM: SPDX-format inventory of every package in every layer of the multi-arch image — consumers can `cosign verify-attestation --type spdxjson ...`
+  - Provenance: SLSA build provenance attestation tied to the GitHub Actions run (workflow file, commit SHA, runner)
+- Both attestations are attached to the same OCI manifest the image already pushes to `ghcr.io/lopezpalacios/paycodex-rules-poc-backend:<tag>` — no separate artifact registry, no extra job, just a flag.
+- Why it matters here: this is a financial-services PoC; if anyone runs the published image in a regulated context they can prove what shipped vs. what's running.
+
 ### Added (loop iter 48, 2026-05-02) — CODEOWNERS + PR template
 - New `.github/CODEOWNERS`: routes reviews by area — `/contracts/`, `/wasm/`, `/.github/workflows/`, `/Dockerfile`, `/scripts/server.mjs` all default to `@lopezpalacios`
 - New `.github/pull_request_template.md`: structured checklist with separate sections for Solidity, WASM, and CI/infra changes — keeps the parity gate explicit ("run `npx hardhat compare:rule` for the touched rule") and codifies the Slither / fuzz expectations on every PR
