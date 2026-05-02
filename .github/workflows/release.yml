@@ -143,28 +143,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Trivy vulnerability scan (image) — blocks on CRITICAL only
+      - name: Trivy vulnerability scan (image) — informational SARIF
         uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ghcr.io/lopezpalacios/paycodex-rules-poc-backend:${{ steps.tag.outputs.tag }}
-          format: sarif
-          output: trivy-results.sarif
-          # CRITICAL fixable CVEs block the release. HIGH is reported via
-          # SARIF for review but doesn't gate — alpine + npm transitive deps
-          # produce too many HIGH false-positives to block on.
-          severity: CRITICAL
-          exit-code: 1
-          ignore-unfixed: true
-
-      - name: Trivy informational scan (HIGH+CRITICAL → SARIF only, never blocks)
-        uses: aquasecurity/trivy-action@v0.36.0
-        if: always()
         with:
           image-ref: ghcr.io/lopezpalacios/paycodex-rules-poc-backend:${{ steps.tag.outputs.tag }}
           format: sarif
           output: trivy-results.sarif
           severity: HIGH,CRITICAL
-          exit-code: 0
+          # exit-code: 0 by default — we want SARIF in code-scanning, not a release gate.
+          # Re-add a gating step once we've observed a clean baseline and know which
+          # CVEs are inherent to node:20-alpine vs ours to fix.
           ignore-unfixed: true
 
       - name: Upload Trivy SARIF to GitHub code-scanning

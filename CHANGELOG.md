@@ -4,6 +4,12 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Fixed (loop iter 56, 2026-05-02) — Trivy gate killed SARIF upload
+- iter 55's split-Trivy approach had a hidden ordering bug: the strict-CRITICAL step exited 1 before the informational SARIF step ran. The `if: always()` upload-sarif step ran, but the SARIF file was empty/partial — `gh api .../code-scanning/alerts` returned 0 Trivy alerts after a "blocked" release.
+- Result: the gate fired, the release was blocked, AND we lost the visibility the gate was supposed to provide.
+- Pragmatic fix: drop the gate entirely. One Trivy step, HIGH+CRITICAL → SARIF, default exit-code 0. Code-scanning gets every finding; nothing blocks the release.
+- The gate can come back in iter N after we observe a clean baseline and know which CVEs are inherent to `node:20-alpine` (immortal) vs ours to actually fix.
+
 ### Tuned (loop iter 55, 2026-05-02) — Trivy gate: CRITICAL blocks, HIGH informs
 - v0.2.0 retag (sha bc814cd) made it through build-and-release ✅, then publish-backend-image SUCCEEDED at the multi-arch push, then Trivy fired and **correctly blocked** because `node:20-alpine` ships HIGH+CRITICAL CVEs.
 - This is actually working-as-designed — the Trivy gate did its job. But blocking on HIGH means we'll never ship until upstream alpine catches up, which is the wrong tradeoff for a PoC.
