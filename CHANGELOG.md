@@ -4,6 +4,17 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 50, 2026-05-02) — OSSF Scorecard workflow
+- New `.github/workflows/scorecard.yml`:
+  - Runs on `main` push, weekly cron (Mon 05:00 UTC), `workflow_dispatch`, and `branch_protection_rule` events
+  - Uses `ossf/scorecard-action@v2.4.0` to evaluate ~18 security/best-practice signals (branch protection, pinned actions, signed releases, code review, fuzzing, etc.)
+  - Uploads SARIF to GitHub code-scanning (`github/codeql-action/upload-sarif@v3`) and publishes to `scorecard.dev` for the public badge
+  - Permissions tightly scoped: `security-events: write`, `id-token: write`, everything else read-only
+- Provides a continuous, third-party security signal for the repo. After the first run, anyone can add the badge to README:
+  ```
+  https://api.scorecard.dev/projects/github.com/lopezpalacios/paycodex-rules-poc/badge
+  ```
+
 ### Added (loop iter 49, 2026-05-02) — SBOM + SLSA provenance on GHCR image
 - Enabled `sbom: true` and `provenance: mode=max` on the `docker/build-push-action@v6` step in `release.yml`:
   - SBOM: SPDX-format inventory of every package in every layer of the multi-arch image — consumers can `cosign verify-attestation --type spdxjson ...`
