@@ -5,11 +5,15 @@
 
 set -euo pipefail
 
+# Ensure both Foundry and pip --user bin dirs are on PATH for THIS script's
+# subshells. devcontainer.json's `remoteEnv` sets PATH for interactive shells
+# but the postCreate runs in a non-login non-interactive shell where it isn't
+# guaranteed to apply. Be explicit.
+export PATH="$HOME/.local/bin:$HOME/.foundry/bin:$PATH"
+
 echo "::group::Install Foundry"
 if ! command -v forge >/dev/null 2>&1; then
   curl -L https://foundry.paradigm.xyz | bash
-  # foundryup needs $FOUNDRY_DIR/bin on PATH (devcontainer.json sets it)
-  export PATH="$HOME/.foundry/bin:$PATH"
   foundryup
 else
   echo "  forge already installed: $(forge --version | head -1)"
@@ -18,7 +22,9 @@ echo "::endgroup::"
 
 echo "::group::Install slither-analyzer + solc 0.8.24"
 pip install --user --upgrade slither-analyzer solc-select
-# pip --user puts bins at ~/.local/bin which is on PATH in this image
+# Re-export PATH after pip install (idempotent, doesn't hurt).
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
 solc-select install 0.8.24
 solc-select use 0.8.24
 echo "::endgroup::"

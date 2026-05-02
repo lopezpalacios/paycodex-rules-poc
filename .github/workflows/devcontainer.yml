@@ -54,14 +54,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' && 'always' || 'never' }}
           runCmd: |
             set -euxo pipefail
-
-            # Use the same one-shot demo script developers run locally.
-            # Local green => CI green by construction.
+            # Single source of truth: scripts/demo.sh. Local-green = CI-green.
+            # demo.sh now includes npm test, so this is the full validation.
             npm run demo
-
-            # Plus the full Hardhat suite for confidence on top of demo.
-            echo "=== Run Hardhat suite (60+ tests) ==="
-            npm test
 
       - name: Upload demo deployment registry
         if: always()

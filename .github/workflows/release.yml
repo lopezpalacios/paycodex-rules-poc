@@ -98,6 +98,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write   # for Trivy SARIF upload
     steps:
       - uses: actions/checkout@v6
 
@@ -120,6 +121,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build + push (multi-arch)
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -140,3 +142,21 @@ jobs:
           provenance: mode=max
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Trivy vulnerability scan (image)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/lopezpalacios/paycodex-rules-poc-backend:${{ steps.tag.outputs.tag }}
+          format: sarif
+          output: trivy-results.sarif
+          # Fail the release on HIGH+CRITICAL — prevents shipping a known-bad image
+          severity: HIGH,CRITICAL
+          exit-code: 1
+          ignore-unfixed: true   # don't block on unfixable upstream CVEs
+
+      - name: Upload Trivy SARIF to GitHub code-scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy

@@ -4,6 +4,25 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Fixed + hardened (loop iter 53, 2026-05-02) — Consolidation pass
+This iter responds to a self-critique that flagged 4 things the prior iters shipped without proving:
+
+1. **Devcontainer postCreate was broken on first run** (caught by `devcontainer.yml` failing on iter 52's push):
+   - `solc-select` failed with `command not found` because `pip --user` puts binaries at `/home/node/.local/bin`, which isn't on PATH inside the postCreate's non-login non-interactive shell.
+   - Fix: explicit `export PATH="$HOME/.local/bin:$HOME/.foundry/bin:$PATH"` at the top of `postCreate.sh` + `hash -r` after pip install.
+   - Also added `~/.local/bin` to `remoteEnv.PATH` in `devcontainer.json` so interactive shells inside devpod see the same PATH.
+2. **`npm run demo` and `devcontainer.yml` had different definitions of "green"** — fixed by adding `npm test` to `scripts/demo.sh` and simplifying `devcontainer.yml` to just call `npm run demo`. One source of truth now.
+3. **No vulnerability scan on the GHCR image** — added Trivy step in `release.yml` (`aquasecurity/trivy-action@0.28.0`):
+   - Runs on the just-pushed tag immediately after the multi-arch build
+   - Fails the release on HIGH+CRITICAL fixable CVEs (`exit-code: 1, ignore-unfixed: true`)
+   - SARIF result uploads to GitHub code-scanning (`category: trivy`)
+   - Required `security-events: write` permission added to the publish-backend-image job
+4. **Bumped package.json + package-lock.json to 0.2.0** ahead of cutting the v0.2.0 tag.
+
+### Verified (this iter)
+- iter 51's devcontainer cold build for sha 58dae87 actually FAILED with `solc-select: command not found` — exactly the bug the self-critique predicted
+- Local `npm run demo` validates the new `npm test` step
+
 ### Added (loop iter 52, 2026-05-02) — `npm run demo` + `.editorconfig`
 - New `scripts/demo.sh` (`npm run demo`): single-command end-to-end demo
   - Builds WASM + compiles contracts

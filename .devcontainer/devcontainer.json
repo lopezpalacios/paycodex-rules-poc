@@ -25,7 +25,7 @@
     "FOUNDRY_DIR": "/home/node/.foundry"
   },
   "remoteEnv": {
-    "PATH": "${containerEnv:PATH}:/home/node/.foundry/bin"
+    "PATH": "${containerEnv:PATH}:/home/node/.foundry/bin:/home/node/.local/bin"
   },
   "customizations": {
     "vscode": {

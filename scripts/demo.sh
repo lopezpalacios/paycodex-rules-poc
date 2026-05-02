@@ -32,6 +32,10 @@ green "▶ wasm parity tests (WASM ↔ Solidity)"
 npm run wasm:test
 gray ""
 
+green "▶ Hardhat suite (60+ tests: unit + parity + revert + lifecycle)"
+npm test
+gray ""
+
 green "▶ simulator: rule 01 simple-act/360 over 360 days on 1,000,000 base units"
 node scripts/simulate.mjs --rule rules/examples/01-simple-act360.json --balance 1000000 --days 360
 gray ""
