@@ -54,20 +54,14 @@ jobs:
           push: ${{ github.event_name != 'pull_request' && 'always' || 'never' }}
           runCmd: |
             set -euxo pipefail
-            echo "=== devpod demo: deploy 9 rules + 9 pools to in-memory hardhat ==="
-            npx hardhat deploy:all --with-pools
 
-            echo "=== Show resulting deployment registry ==="
-            jq . .deployments/hardhat.json | head -60 || cat .deployments/hardhat.json
+            # Use the same one-shot demo script developers run locally.
+            # Local green => CI green by construction.
+            npm run demo
 
+            # Plus the full Hardhat suite for confidence on top of demo.
             echo "=== Run Hardhat suite (60+ tests) ==="
             npm test
-
-            echo "=== Run WASM ↔ Solidity parity tests ==="
-            npm run wasm:test
-
-            echo "=== Smoke: backend + simulator scripts run cleanly ==="
-            node scripts/simulate.mjs --rule rules/examples/01-simple-act360.json --balance 1000000 --days 360 || true
 
       - name: Upload demo deployment registry
         if: always()

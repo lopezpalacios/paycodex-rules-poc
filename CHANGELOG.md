@@ -4,6 +4,18 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added (loop iter 52, 2026-05-02) — `npm run demo` + `.editorconfig`
+- New `scripts/demo.sh` (`npm run demo`): single-command end-to-end demo
+  - Builds WASM + compiles contracts
+  - Deploys 9 rules + 9 pools via `npx hardhat deploy:all --with-pools`
+  - Pretty-prints deployment registry (jq if available, fallback to cat)
+  - Runs the WASM ↔ Solidity parity test suite (`npm run wasm:test`)
+  - Runs the no-chain simulator on rule 01 over 360 days
+  - Closes with a "next steps" banner
+- DRY win: `devcontainer.yml` now calls `npm run demo` instead of inlining the same commands. Local-green ⇒ CI-green by construction.
+- Devcontainer postCreate banner updated to advertise `npm run demo` first.
+- New `.editorconfig`: 2-space everything, LF endings, trim trailing whitespace, tabs for Makefile, 4-space for Python. Keeps formatting consistent across VS Code, JetBrains, Vim users (and inside the devcontainer).
+
 ### Added (loop iter 51, 2026-05-02) — Devpod/Codespaces-ready devcontainer + CI demo
 - New `.devcontainer/devcontainer.json`:
   - Base: `mcr.microsoft.com/devcontainers/javascript-node:1-20-bookworm`

@@ -43,7 +43,10 @@ cat <<'BANNER'
 ╔════════════════════════════════════════════════════════════════════╗
 ║  paycodex-rules-poc devcontainer ready                             ║
 ╠════════════════════════════════════════════════════════════════════╣
-║  Quick demos:                                                      ║
+║  One-shot demo:                                                    ║
+║    npm run demo                   # build + deploy + parity + sim   ║
+║                                                                    ║
+║  Other commands:                                                   ║
 ║    npm test                       # 60+ Hardhat tests               ║
 ║    npm run wasm:test              # WASM ↔ Solidity parity          ║
 ║    npx hardhat deploy:all --with-pools                             ║
