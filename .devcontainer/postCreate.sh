@@ -49,15 +49,18 @@ cat <<'BANNER'
 ╔════════════════════════════════════════════════════════════════════╗
 ║  paycodex-rules-poc devcontainer ready                             ║
 ╠════════════════════════════════════════════════════════════════════╣
-║  One-shot demo:                                                    ║
+║  One-shot demo (no chain):                                         ║
 ║    npm run demo                   # build + deploy + parity + sim   ║
 ║                                                                    ║
-║  Other commands:                                                   ║
+║  Full stack (besu + web3signer + backend, in containers):          ║
+║    npm run dev:up                 # ports 8545, 9000, 3001          ║
+║    npm run ui                     # then UI on port 5173            ║
+║    npm run dev:down               # tear down                       ║
+║                                                                    ║
+║  Other:                                                            ║
 ║    npm test                       # 60+ Hardhat tests               ║
 ║    npm run wasm:test              # WASM ↔ Solidity parity          ║
 ║    npx hardhat deploy:all --with-pools                             ║
-║    npm run server                 # backend (port 3001)             ║
-║    npm run ui                     # UI dev (port 5173)              ║
 ║                                                                    ║
 ║  Real chain (requires DinD up):                                    ║
 ║    npm run besu:up                # besu + web3signer (8545/9000)   ║

@@ -16,9 +16,14 @@ Click any badge above and you get a working environment in minutes — Node 20, 
 
 ```bash
 # Once inside the container:
+npm run demo                               # build + deploy + parity + sim (no chain)
 npm test                                   # 60+ Hardhat tests
 npx hardhat deploy:all --with-pools        # 9 deposits + 9 pools in-memory
-npm run besu:up && npm run server          # real chain + backend on ports 8545/3001
+
+# Full stack (Besu + Web3signer + backend, all containerized via DinD):
+npm run dev:up                             # ports 8545 / 9000 / 3001
+npm run ui                                 # UI on 5173
+npm run dev:down                           # tear down
 ```
 
 ## Why this exists

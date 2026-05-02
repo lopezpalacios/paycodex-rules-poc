@@ -4,6 +4,22 @@ All notable changes to this project documented per [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Released — `v0.2.0` shipped 2026-05-02
+- GitHub Release: https://github.com/lopezpalacios/paycodex-rules-poc/releases/tag/v0.2.0
+- 4 zip assets: `paycodex-rules-{wasm,ui,artifacts,examples}-v0.2.0.zip` (sizes: 14906 / 98975 / 62549 / 6203 bytes)
+- GHCR multi-arch image: `ghcr.io/lopezpalacios/paycodex-rules-poc-backend:v0.2.0` and `:latest` (linux/amd64 + linux/arm64) with SBOM (SPDX) + SLSA provenance attestations + Trivy SARIF
+- Took 4 release.yml attempts to ship — see iters 54, 55, 56 for the bugs surfaced and fixed.
+
+### Added (loop iter 57, 2026-05-02) — `npm run dev:up` — one-command full-stack
+- New `scripts/dev-up.sh` + `npm run dev:up`/`dev:down`/`dev:logs`:
+  - Brings up Besu IBFT2 + Web3signer + paycodex backend (all containerized) via `docker compose --profile backend up --build`
+  - Default dev secrets (`PAYCODEX_API_KEYS=dev:s3cret`, `PAYCODEX_ADMIN_KEYS=s3cret`) — overridable via env
+  - Polls Besu RPC + backend `/api/health` until both respond before declaring success
+  - Prints port table + curl examples + tear-down command
+- Verified locally: `npm run dev:up` → `curl /api/health` returns `ok=true accounts=1 blockNumber=7 auth=enabled` end-to-end.
+- Inside devcontainer: same command works because devcontainer.json has `docker-in-docker` feature; ports 8545/9000/3001/5173 auto-forwarded by devpod/Codespaces.
+- README + postCreate banner updated to advertise the new flow.
+
 ### Fixed (loop iter 56, 2026-05-02) — Trivy gate killed SARIF upload
 - iter 55's split-Trivy approach had a hidden ordering bug: the strict-CRITICAL step exited 1 before the informational SARIF step ran. The `if: always()` upload-sarif step ran, but the SARIF file was empty/partial — `gh api .../code-scanning/alerts` returned 0 Trivy alerts after a "blocked" release.
 - Result: the gate fired, the release was blocked, AND we lost the visibility the gate was supposed to provide.
